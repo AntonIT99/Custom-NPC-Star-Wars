@@ -19,8 +19,8 @@ public class ModelTwilek extends ModelStarWarsNPC
     public ModelTwilek()
     {
         super(true);
-        textureWidth = 64;
-        textureHeight = 128;
+        textureWidth = 96;
+        textureHeight = 96;
 
         bipedBody = new ModelRenderer(this, 16, 16); // Torso
         chest = new ModelRenderer(this, 1, 66); // Chest
