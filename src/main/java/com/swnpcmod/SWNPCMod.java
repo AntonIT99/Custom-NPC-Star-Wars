@@ -12,7 +12,7 @@ import cpw.mods.fml.common.event.FMLPreInitializationEvent;
 
 public class SWNPCMod
 {
-    @SidedProxy(clientSide = "com.swnpcmod.ClientProxy", serverSide = "com.swnpcmod.ServerProxy")
+    @SidedProxy(clientSide = "com.swnpcmod.ClientProxy", serverSide = "com.swnpcmod.CommonProxy")
     public static CommonProxy proxy;
 
     @Instance(Strings.MOD_ID)
