@@ -6,6 +6,7 @@ import com.swnpcmod.model.ModelStarWarsNPC;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import noppes.npcs.client.model.ModelMPM;
+import noppes.npcs.client.model.ModelNPCMale;
 import noppes.npcs.client.renderer.RenderNPCHumanMale;
 
 import net.minecraft.client.model.ModelBase;
@@ -21,7 +22,7 @@ public class RenderStarWarsNPC extends RenderNPCHumanMale
 
     public RenderStarWarsNPC(Class <? extends ModelStarWarsNPC> model, String texturePath) throws InstantiationException, IllegalAccessException
     {
-        super(model.newInstance().scale(0F), model.newInstance().scale(1F), model.newInstance().scale(0.5F));
+        super(model.newInstance().scale(0F), new ModelNPCMale(1F), new ModelNPCMale(0.5F));
         this.texturePath = texturePath;
     }
 
