@@ -1,0 +1,17 @@
+[
+{
+  "modid": "swnpcmod",
+  "name": "Star Wars NPCs",
+  "description": "Star Wars Custom NPCs models",
+  "version": "1.0",
+  "mcversion": "1.7.10",
+  "url": "",
+  "updateUrl": "",
+  "authorList": ["Wolff"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": [customnpcs]
+}
+]
+
