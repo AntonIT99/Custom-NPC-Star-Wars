@@ -4,6 +4,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.flansmod.client.tmt.ModelRendererTurbo;
 import com.flansmod.common.teams.ArmourType;
+import noppes.npcs.CustomNpcs;
 import noppes.npcs.constants.EnumAnimation;
 import noppes.npcs.constants.EnumJobType;
 import noppes.npcs.entity.EntityCustomNpc;
@@ -132,11 +133,7 @@ public class ModelCustomArmour extends ModelBiped
 		if(isSneak && (entity.currentAnimation == EnumAnimation.CRAWLING || entity.currentAnimation == EnumAnimation.LYING))
 			isSneak = false;
 
-		bipedRightArm.rotationPointY = 2.0F;
-		bipedLeftArm.rotationPointY = 2.0F;
-		bipedRightLeg.rotateAngleZ = 0.0F;
-		bipedLeftLeg.rotateAngleZ = 0.0F;
-
+		setInitialAngles();
 		setRotationAngles(f, f1, f2, f3, f4, f5, entity);
 
 		switch(currentAnimation)
@@ -223,11 +220,40 @@ public class ModelCustomArmour extends ModelBiped
 		}
 	}
 
+	protected void setInitialAngles()
+	{
+		// Head
+		this.bipedHead.rotateAngleZ = 0F;
+		this.bipedHeadwear.rotateAngleZ = 0F;
+
+		// Body
+		this.bipedBody.rotationPointX = 0F;
+		this.bipedBody.rotationPointY = 0F;
+		this.bipedBody.rotationPointZ = 0F;
+		this.bipedBody.rotateAngleX = 0F;
+		this.bipedBody.rotateAngleY = 0F;
+		this.bipedBody.rotateAngleZ = 0F;
+
+		// Legs
+		this.bipedLeftLeg.rotateAngleX = 0F;
+		this.bipedLeftLeg.rotateAngleY = 0F;
+		this.bipedLeftLeg.rotateAngleZ = 0F;
+		this.bipedRightLeg.rotateAngleX = 0F;
+		this.bipedRightLeg.rotateAngleY = 0F;
+		this.bipedRightLeg.rotateAngleZ = 0F;
+
+		// Arms
+		this.bipedLeftArm.rotationPointY = 2F;
+		this.bipedLeftArm.rotationPointZ = 0F;
+		this.bipedRightArm.rotationPointY = 2F;
+		this.bipedRightArm.rotationPointZ = 0F;
+	}
+
 	public void setRotationAnglesDancing(float par1, float par2, float par3, float par4, float par5, float par6, Entity entity)
 	{
-		float dancing = entity.ticksExisted / 4.0F;
-		float x = (float)Math.sin(dancing);
-		float y = (float)Math.abs(Math.cos(dancing));
+		float dancing = CustomNpcs.ticks / 3.978873F;
+		float x = (float) Math.sin(dancing);
+		float y = (float) Math.abs(Math.cos(dancing));
 
 		bipedRightArm.rotationPointX = -5.0F;
 		bipedLeftArm.rotationPointX = 5.0F;
