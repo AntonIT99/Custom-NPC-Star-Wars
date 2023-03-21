@@ -2,5 +2,5 @@ package com.swnpcmod;
 
 public class CommonProxy
 {
-    public void registerRenderThings() {}
+    public void registerRenders() {}
 }

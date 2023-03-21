@@ -1,7 +1,8 @@
-package com.swnpcmod;
+package com.swnpcmod.render;
 
 import org.lwjgl.opengl.GL11;
 
+import com.swnpcmod.Strings;
 import com.swnpcmod.model.ModelStarWarsNPC;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -20,13 +21,13 @@ public class RenderStarWarsNPC extends RenderNPCHumanMale
     private final String texturePath;
     private float modelScale = 1F;
 
-    public RenderStarWarsNPC(Class <? extends ModelStarWarsNPC> model, String texturePath) throws InstantiationException, IllegalAccessException
+    public RenderStarWarsNPC(ModelStarWarsNPC model, String texturePath)
     {
-        super(model.newInstance().scale(0F), new ModelNPCMale(1F), new ModelNPCMale(0.5F));
+        super(model, new ModelNPCMale(1F), new ModelNPCMale(0.5F));
         this.texturePath = texturePath;
     }
 
-    public RenderStarWarsNPC(Class <? extends ModelStarWarsNPC> model, float scale, String texturePath) throws InstantiationException, IllegalAccessException
+    public RenderStarWarsNPC(ModelStarWarsNPC model, float scale, String texturePath)
     {
         this(model, texturePath);
         modelScale = scale;

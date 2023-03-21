@@ -16,9 +16,9 @@ public class ModelTwilek extends ModelStarWarsNPC
     public ModelRenderer spikeR;
     public ModelRenderer chest;
 
-    public ModelTwilek()
+    public ModelTwilek(float scaleFactor)
     {
-        super(true);
+        super(scaleFactor, true);
         textureWidth = 96;
         textureHeight = 96;
 
