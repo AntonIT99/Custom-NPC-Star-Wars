@@ -6,11 +6,16 @@ import java.util.HashMap;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.SharedMonsterAttributes;
+import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.ItemSword;
+import net.minecraft.item.ItemTool;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
@@ -26,8 +31,12 @@ public class DataInventory implements IInventory{
 	public int maxExp = 0;
 	
 	public int lootMode = 0;
-	
+
 	private EntityNPCInterface npc;
+
+	public boolean useWeaponMeleeStats = true;
+	public boolean useWeaponRangedStats = true;
+	public boolean useArmorStats = true;
 	
 	public DataInventory(EntityNPCInterface npc){
 		this.npc = npc;
@@ -77,8 +86,29 @@ public class DataInventory implements IInventory{
 	public ItemStack getWeapon(){
 		return weapons.get(0);
 	}
-	public void setWeapon(ItemStack item){
-		weapons.put(0, item);
+	public void setWeapon(ItemStack itemStack){
+		weapons.put(0, itemStack);
+
+		if (itemStack == null)
+			return;
+
+		Item item = itemStack.getItem();
+		if (useWeaponMeleeStats)
+		{
+			if (item instanceof ItemSword)
+			{
+				AttributeModifier attribute = (AttributeModifier) item.getAttributeModifiers(itemStack).get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName()).toArray()[0];
+				System.out.print(attribute.getAmount());
+				/*npc.stats.setAttackStrength(
+						(AttributeModifier)item.getItemAttributeModifiers().get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName())
+				);*/
+			}
+			else if (item instanceof ItemTool)
+			{
+
+			}
+
+		}
 	}
 	public ItemStack getProjectile(){
 		return weapons.get(1);

@@ -1,5 +1,6 @@
 package noppes.npcs.entity;
 
+import com.flansmod.common.guns.*;
 import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
@@ -29,14 +30,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.pathfinding.PathNavigate;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
-import net.minecraft.util.AxisAlignedBB;
-import net.minecraft.util.ChatComponentTranslation;
-import net.minecraft.util.ChunkCoordinates;
-import net.minecraft.util.DamageSource;
-import net.minecraft.util.IChatComponent;
-import net.minecraft.util.IIcon;
-import net.minecraft.util.MathHelper;
-import net.minecraft.util.ResourceLocation;
+import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraftforge.common.MinecraftForge;
@@ -588,11 +582,43 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			if (EventHooks.onNPCRangedAttack(this, event))
 				return;
 			for (int i = 0; i < this.stats.shotCount; i++) {
-				EntityProjectile projectile = shoot(entity, stats.accuracy, proj, f == 1);
-				projectile.damage = event.getDamage();
+				Item projectileItem = proj.getItem();
+				if (projectileItem instanceof ItemShootable)
+				{
+					shootFlanProjectile((ItemBullet)projectileItem);
+				}
+				else
+				{
+					EntityProjectile projectile = shoot(entity, stats.accuracy, proj, f == 1);
+					projectile.damage = event.getDamage();
+				}
 			}
 			this.playSound(this.stats.fireSound, 2.0F, 1.0f);
 		}
+	}
+
+	private void shootFlanProjectile(ItemShootable item)
+	{
+		EntityShootable shot = item.getEntity(
+				worldObj,
+				Vec3.createVectorHelper(posX, posY + getEyeHeight(), posZ),
+				rotationYawHead,
+				rotationPitch,
+				this,
+				1F, //20F * ((float)Math.exp(1F - ((float)stats.accuracy / 100F)) - 1F),
+				stats.pDamage,
+				stats.pSpeed,
+				0,
+				item.type
+		);
+
+		if (shot instanceof EntityBullet)
+			((EntityBullet) shot).shotgun = stats.shotCount > 1;
+
+		worldObj.spawnEntityInWorld(shot);
+
+		/*this(world, , shooter, spread, gunDamage, type1, speed, shotFrom);
+		shotgun = shot;*/
 	}
 
 	public EntityProjectile shoot(EntityLivingBase entity, int accuracy, ItemStack proj, boolean indirect){

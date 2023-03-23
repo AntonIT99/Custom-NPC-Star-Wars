@@ -6,15 +6,10 @@ import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.RenderHelper;
 import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.client.renderer.texture.TextureMap;
-import net.minecraft.inventory.Container;
 import net.minecraft.inventory.Slot;
-import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
-import net.minecraft.util.EnumChatFormatting;
-import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
-import net.minecraft.util.StatCollector;
+
 import noppes.npcs.client.Client;
 import noppes.npcs.client.gui.util.*;
 import noppes.npcs.constants.EnumPacketServer;
@@ -62,6 +57,18 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
         addLabel(new GuiNpcLabel(4,"Tab", guiLeft + 381, guiTop + 5));
         addButton(new GuiNpcButton(11, guiLeft + 375, guiTop + 13, 30, 20, "1"));
         addButton(new GuiNpcButton(12, guiLeft + 375, guiTop + 34, 30, 20, "2"));
+
+        addLabel(new GuiNpcLabel(30,"Melee", guiLeft + 371, guiTop + 60));
+        addLabel(new GuiNpcLabel(31,"Stats", guiLeft + 371, guiTop + 70));
+        addButton(new GuiNpcButton(32,guiLeft + 375, guiTop + 80, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useWeaponMeleeStats ? 1:0));
+
+        addLabel(new GuiNpcLabel(33,"Ranged", guiLeft + 371, guiTop + 110));
+        addLabel(new GuiNpcLabel(34,"Stats", guiLeft + 371, guiTop + 120));
+        addButton(new GuiNpcButton(35,guiLeft + 375, guiTop + 130, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useWeaponRangedStats ? 1:0));
+
+        addLabel(new GuiNpcLabel(36,"Armor", guiLeft + 371, guiTop + 160));
+        addLabel(new GuiNpcLabel(37,"Stats", guiLeft + 371, guiTop + 170));
+        addButton(new GuiNpcButton(38,guiLeft + 375, guiTop + 180, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useArmorStats ? 1:0));
 
         for(int c = 0; c < 4; c++) {
             for (int r = 0; r < 9; r++) {
