@@ -33,6 +33,8 @@ public class ModelCustomArmour extends ModelBiped
 	public ModelRendererTurbo[] skirtFrontModel = new ModelRendererTurbo[0]; //Acts like a leg piece, but its pitch is set to the maximum of the two legs
 	public ModelRendererTurbo[] skirtRearModel = new ModelRendererTurbo[0]; //Acts like a leg piece, but its pitch is set to the minimum of the two legs
 
+	protected float dancingTicks;
+
 	@Override
 	public void render(Entity entity, float f, float f1, float f2, float f3, float f4, float f5)
 	{
@@ -58,18 +60,23 @@ public class ModelCustomArmour extends ModelBiped
 
 		if ((entity instanceof EntityNPCInterface))
 		{
-			setRotationAnglesForCustomNpc(f, f1, f2, f3, f4, f5, (EntityNPCInterface)entity);
+			setRotationAnglesCustomNpc(f, f1, f2, f3, f4, f5, (EntityNPCInterface)entity);
+			renderHeadNPC((EntityNPCInterface)entity, f5);
+			renderBodyNPC((EntityNPCInterface)entity, f5);
+			renderLeftArmNPC((EntityNPCInterface)entity, f5);
+			renderRightArmNPC((EntityNPCInterface)entity, f5);
 		}
 		else
 		{
 			setRotationAngles(f, f1, f2, f3, f4, f5, entity);
+			render(headModel, bipedHead, f5, type.modelScale);
+			render(bodyModel, bipedBody, f5, type.modelScale);
+			render(leftArmModel, bipedLeftArm, f5, type.modelScale);
+			render(rightArmModel, bipedRightArm, f5, type.modelScale);
 		}
-		render(headModel, bipedHead, f5, type.modelScale);
-		render(bodyModel, bipedBody, f5, type.modelScale);
-		render(leftArmModel, bipedLeftArm, f5, type.modelScale);
-		render(rightArmModel, bipedRightArm, f5, type.modelScale);
 		render(leftLegModel, bipedLeftLeg, f5, type.modelScale);
 		render(rightLegModel, bipedRightLeg, f5, type.modelScale);
+
 		//Skirt front
 		{
 			for(ModelRendererTurbo mod : skirtFrontModel)
@@ -99,6 +106,19 @@ public class ModelCustomArmour extends ModelBiped
 		GL11.glPopMatrix();
 	}
 
+	@Override
+	public void setRotationAngles(float par1, float par2, float par3, float par4, float par5, float par6, Entity entity)
+	{
+		setInitialAngles();
+		super.setRotationAngles(par1, par2, par3, par4, par5, par6, entity);
+	}
+
+	@Override
+	public void setLivingAnimations(EntityLivingBase par1EntityLiving, float f6, float f5, float par9)
+	{
+		dancingTicks = CustomNpcs.ticks / 3.978873F;
+	}
+
 	public void render(ModelRendererTurbo[] models, ModelRenderer bodyPart, float f5, float scale)
 	{
 		setBodyPart(models, bodyPart, scale);
@@ -121,7 +141,69 @@ public class ModelCustomArmour extends ModelBiped
 		}
 	}
 
-	public void setRotationAnglesForCustomNpc(float f, float f1, float f2, float f3, float f4, float f5, EntityNPCInterface entity)
+	public void renderHeadNPC(EntityNPCInterface npc, float f)
+	{
+		if(npc.currentAnimation == EnumAnimation.DANCING)
+		{
+			float dancing = (npc instanceof EntityCustomNpc) ? npc.ticksExisted / 4f : dancingTicks;
+			GL11.glPushMatrix();
+			GL11.glTranslatef((float)Math.sin(dancing) * 0.075F, (float)Math.abs(Math.cos(dancing)) * 0.125F - 0.02F, (float)(-Math.abs(Math.cos(dancing))) * 0.075F);
+			render(headModel, bipedHead, f, type.modelScale);
+			GL11.glPopMatrix();
+		}
+		else
+		{
+			render(headModel, bipedHead, f, type.modelScale);
+		}
+	}
+	protected void renderLeftArmNPC(EntityNPCInterface npc, float f)
+	{
+		if(npc.currentAnimation == EnumAnimation.DANCING)
+		{
+			float dancing = (npc instanceof EntityCustomNpc) ? npc.ticksExisted / 4f : dancingTicks;
+			GL11.glPushMatrix();
+			GL11.glTranslatef((float)Math.sin(dancing) * 0.025F, (float)Math.abs(Math.cos(dancing)) * 0.125F - 0.02F, 0.0F);
+			render(leftArmModel, bipedLeftArm, f, type.modelScale);
+			GL11.glPopMatrix();
+		}
+		else
+		{
+			render(leftArmModel, bipedLeftArm, f, type.modelScale);
+		}
+	}
+
+	protected void renderRightArmNPC(EntityNPCInterface npc, float f)
+	{
+		if(npc.currentAnimation == EnumAnimation.DANCING)
+		{
+			float dancing = (npc instanceof EntityCustomNpc) ? npc.ticksExisted / 4f : dancingTicks;
+			GL11.glPushMatrix();
+			GL11.glTranslatef((float)Math.sin(dancing) * 0.025F, (float)Math.abs(Math.cos(dancing)) * 0.125F - 0.02F, 0.0F);
+			render(rightArmModel, bipedRightArm, f, type.modelScale);
+			GL11.glPopMatrix();
+		}
+		else
+		{
+			render(rightArmModel, bipedRightArm, f, type.modelScale);
+		}
+	}
+	protected void renderBodyNPC(EntityNPCInterface npc, float f)
+	{
+		if(npc.currentAnimation == EnumAnimation.DANCING)
+		{
+			float dancing = (npc instanceof EntityCustomNpc) ? npc.ticksExisted / 4f : dancingTicks;
+			GL11.glPushMatrix();
+			GL11.glTranslatef((float)Math.sin(dancing) * 0.015F, 0.0F, 0.0F);
+			render(bodyModel, bipedBody, f, type.modelScale);
+			GL11.glPopMatrix();
+		}
+		else
+		{
+			render(bodyModel, bipedBody, f, type.modelScale);
+		}
+	}
+
+	public void setRotationAnglesCustomNpc(float par1, float par2, float par3, float par4, float par5, float par6, EntityNPCInterface entity)
 	{
 		EnumAnimation currentAnimation = entity.currentAnimation;
 		isRiding = entity.isRiding() || (currentAnimation == EnumAnimation.SITTING);
@@ -133,25 +215,127 @@ public class ModelCustomArmour extends ModelBiped
 		if(isSneak && (entity.currentAnimation == EnumAnimation.CRAWLING || entity.currentAnimation == EnumAnimation.LYING))
 			isSneak = false;
 
-		setInitialAngles();
-		setRotationAngles(f, f1, f2, f3, f4, f5, entity);
+		setRotationAngles(par1, par2, par3, par4, par5, par6, entity);
+
+		bipedHead.rotateAngleY = par4 / (180F / (float)Math.PI);
+		bipedHead.rotateAngleX = par5 / (180F / (float)Math.PI);
+		bipedHeadwear.rotateAngleY = bipedHead.rotateAngleY;
+		bipedHeadwear.rotateAngleX = bipedHead.rotateAngleX;
+		bipedRightArm.rotateAngleX = MathHelper.cos(par1 * 0.6662F + (float)Math.PI) * 2.0F * par2 * 0.5F;
+		bipedLeftArm.rotateAngleX = MathHelper.cos(par1 * 0.6662F) * 2.0F * par2 * 0.5F;
+		bipedRightArm.rotateAngleZ = 0.0F;
+		bipedLeftArm.rotateAngleZ = 0.0F;
+		bipedRightLeg.rotateAngleX = MathHelper.cos(par1 * 0.6662F) * 1.4F * par2;
+		bipedLeftLeg.rotateAngleX = MathHelper.cos(par1 * 0.6662F + (float)Math.PI) * 1.4F * par2;
+		bipedRightLeg.rotateAngleY = 0.0F;
+		bipedLeftLeg.rotateAngleY = 0.0F;
+
+		if (isRiding)
+		{
+			bipedRightArm.rotateAngleX += -((float)Math.PI / 5F);
+			bipedLeftArm.rotateAngleX += -((float)Math.PI / 5F);
+			bipedRightLeg.rotateAngleX = -((float)Math.PI * 2F / 5F);
+			bipedLeftLeg.rotateAngleX = -((float)Math.PI * 2F / 5F);
+			bipedRightLeg.rotateAngleY = ((float)Math.PI / 10F);
+			bipedLeftLeg.rotateAngleY = -((float)Math.PI / 10F);
+		}
+
+		if (heldItemLeft != 0)
+		{
+			bipedLeftArm.rotateAngleX = bipedLeftArm.rotateAngleX * 0.5F - ((float)Math.PI / 10F) * (float)heldItemLeft;
+		}
+
+		if (heldItemRight != 0)
+		{
+			bipedRightArm.rotateAngleX = bipedRightArm.rotateAngleX * 0.5F - ((float)Math.PI / 10F) * (float)heldItemRight;
+		}
+
+		bipedRightArm.rotateAngleY = 0.0F;
+		bipedLeftArm.rotateAngleY = 0.0F;
+
+		if (onGround > -9990F)
+		{
+			float f = onGround;
+			bipedBody.rotateAngleY = MathHelper.sin(MathHelper.sqrt_float(f) * (float)Math.PI * 2.0F) * 0.2F;
+			bipedRightArm.rotationPointZ = MathHelper.sin(bipedBody.rotateAngleY) * 5F;
+			bipedRightArm.rotationPointX = -MathHelper.cos(bipedBody.rotateAngleY) * 5F;
+			bipedLeftArm.rotationPointZ = -MathHelper.sin(bipedBody.rotateAngleY) * 5F;
+			bipedLeftArm.rotationPointX = MathHelper.cos(bipedBody.rotateAngleY) * 5F;
+			bipedRightArm.rotateAngleY += bipedBody.rotateAngleY;
+			bipedLeftArm.rotateAngleY += bipedBody.rotateAngleY;
+			bipedLeftArm.rotateAngleX += bipedBody.rotateAngleY;
+			f = 1.0F - onGround;
+			f *= f;
+			f *= f;
+			f = 1.0F - f;
+			float f2 = MathHelper.sin(f * (float)Math.PI);
+			float f4 = MathHelper.sin(onGround * (float)Math.PI) * -(bipedHead.rotateAngleX - 0.7F) * 0.75F;
+			bipedRightArm.rotateAngleX -= (double)f2 * 1.2D + (double)f4;
+			bipedRightArm.rotateAngleY += bipedBody.rotateAngleY * 2.0F;
+			bipedRightArm.rotateAngleZ = MathHelper.sin(onGround * (float)Math.PI) * -0.4F;
+		}
+
+		if (isSneak)
+		{
+			bipedBody.rotateAngleX = 0.5F;
+			if (entity instanceof EntityCustomNpc)
+				bipedBody.rotateAngleX /= ((EntityCustomNpc)entity).modelData.body.scaleY;
+			bipedRightLeg.rotateAngleX -= 0.0F;
+			bipedLeftLeg.rotateAngleX -= 0.0F;
+			bipedRightArm.rotateAngleX += 0.4F;
+			bipedLeftArm.rotateAngleX += 0.4F;
+			bipedRightLeg.rotationPointZ = 4F;
+			bipedLeftLeg.rotationPointZ = 4F;
+			bipedRightLeg.rotationPointY = 9F;
+			bipedLeftLeg.rotationPointY = 9F;
+			bipedHead.rotationPointY = 1.0F;
+		}
+		else
+		{
+			bipedBody.rotateAngleX = 0.0F;
+			bipedRightLeg.rotationPointZ = 0.0F;
+			bipedLeftLeg.rotationPointZ = 0.0F;
+			bipedRightLeg.rotationPointY = 12F;
+			bipedLeftLeg.rotationPointY = 12F;
+			bipedHead.rotationPointY = 0.0F;
+		}
+
+		bipedRightArm.rotateAngleZ += MathHelper.cos(par3 * 0.09F) * 0.05F + 0.05F;
+		bipedLeftArm.rotateAngleZ -= MathHelper.cos(par3 * 0.09F) * 0.05F + 0.05F;
+		bipedRightArm.rotateAngleX += MathHelper.sin(par3 * 0.067F) * 0.05F;
+		bipedLeftArm.rotateAngleX -= MathHelper.sin(par3 * 0.067F) * 0.05F;
+
+		if (aimedBow)
+		{
+			float f1 = 0.0F;
+			float f3 = 0.0F;
+			bipedRightArm.rotateAngleZ = 0.0F;
+			bipedLeftArm.rotateAngleZ = 0.0F;
+			bipedRightArm.rotateAngleY = -(0.1F - f1 * 0.6F) + bipedHead.rotateAngleY;
+			bipedLeftArm.rotateAngleY = (0.1F - f1 * 0.6F) + bipedHead.rotateAngleY + 0.4F;
+			bipedRightArm.rotateAngleX = -((float)Math.PI / 2F) + bipedHead.rotateAngleX;
+			bipedLeftArm.rotateAngleX = -((float)Math.PI / 2F) + bipedHead.rotateAngleX;
+			bipedRightArm.rotateAngleX -= f1 * 1.2F - f3 * 0.4F;
+			bipedLeftArm.rotateAngleX -= f1 * 1.2F - f3 * 0.4F;
+			bipedRightArm.rotateAngleZ += MathHelper.cos(par3 * 0.09F) * 0.05F + 0.05F;
+			bipedLeftArm.rotateAngleZ -= MathHelper.cos(par3 * 0.09F) * 0.05F + 0.05F;
+			bipedRightArm.rotateAngleX += MathHelper.sin(par3 * 0.067F) * 0.05F;
+			bipedLeftArm.rotateAngleX -= MathHelper.sin(par3 * 0.067F) * 0.05F;
+		}
 
 		switch(currentAnimation)
 		{
-			case DANCING:
-				setRotationAnglesDancing(f, f1, f2, f3, f4, f5, entity);
-				break;
 			case CRAWLING:
-				setRotationAnglesCrawling(f, f1, f2, f3, f4, f5, entity);
+				setRotationAnglesCrawling(par1, par2, par3, par4, par5, par6, entity);
 				break;
 			case HUG:
-				setRotationAnglesHug(f, f1, f2, f3, f4, f5, entity);
+				setRotationAnglesHug(par1, par2, par3, par4, par5, par6, entity);
 				break;
 			case WAVING:
-				setRotationAnglesWaving(f, f1, f2, f3, f4, f5, entity);
+				setRotationAnglesWaving(par1, par2, par3, par4, par5, par6, entity);
 				break;
 			case CRY:
-				setRotationAnglesCry(f, f1, f2, f3, f4, f5, entity);
+				setRotationAnglesCry(par1, par2, par3, par4, par5, par6, entity);
 				break;
 		}
 
@@ -185,8 +369,8 @@ public class ModelCustomArmour extends ModelBiped
 
 					if(!entity.display.disableLivingAnimation)
 					{
-						this.bipedLeftArm.rotateAngleZ -= MathHelper.cos(f2 * 0.09F) * 0.05F + 0.05F;
-						this.bipedLeftArm.rotateAngleX -= MathHelper.sin(f2 * 0.067F) * 0.05F;
+						bipedLeftArm.rotateAngleZ -= MathHelper.cos(par2 * 0.09F) * 0.05F + 0.05F;
+						bipedLeftArm.rotateAngleX -= MathHelper.sin(par2 * 0.067F) * 0.05F;
 					}
 				}
 
@@ -198,8 +382,8 @@ public class ModelCustomArmour extends ModelBiped
 
 					if(!entity.display.disableLivingAnimation)
 					{
-						this.bipedRightArm.rotateAngleZ += MathHelper.cos(f2 * 0.09F) * 0.05F + 0.05F;
-						this.bipedRightArm.rotateAngleX += MathHelper.sin(f2 * 0.067F) * 0.05F;
+						bipedRightArm.rotateAngleZ += MathHelper.cos(par2 * 0.09F) * 0.05F + 0.05F;
+						bipedRightArm.rotateAngleX += MathHelper.sin(par2 * 0.067F) * 0.05F;
 					}
 				}
 
@@ -223,54 +407,36 @@ public class ModelCustomArmour extends ModelBiped
 	protected void setInitialAngles()
 	{
 		// Head
-		this.bipedHead.rotateAngleZ = 0F;
-		this.bipedHeadwear.rotateAngleZ = 0F;
+		bipedHead.rotationPointX = 0F;
+		bipedHead.rotationPointY = 0F;
+		bipedHead.rotationPointZ = 0F;
+		bipedHead.rotateAngleZ = 0F;
+		bipedHeadwear.rotationPointX = 0F;
+		bipedHeadwear.rotationPointY = 0F;
+		bipedHeadwear.rotationPointZ = 0F;
+		bipedHeadwear.rotateAngleZ = 0F;
 
 		// Body
-		this.bipedBody.rotationPointX = 0F;
-		this.bipedBody.rotationPointY = 0F;
-		this.bipedBody.rotationPointZ = 0F;
-		this.bipedBody.rotateAngleX = 0F;
-		this.bipedBody.rotateAngleY = 0F;
-		this.bipedBody.rotateAngleZ = 0F;
+		bipedBody.rotationPointX = 0F;
+		bipedBody.rotationPointY = 0F;
+		bipedBody.rotationPointZ = 0F;
+		bipedBody.rotateAngleX = 0F;
+		bipedBody.rotateAngleY = 0F;
+		bipedBody.rotateAngleZ = 0F;
 
 		// Legs
-		this.bipedLeftLeg.rotateAngleX = 0F;
-		this.bipedLeftLeg.rotateAngleY = 0F;
-		this.bipedLeftLeg.rotateAngleZ = 0F;
-		this.bipedRightLeg.rotateAngleX = 0F;
-		this.bipedRightLeg.rotateAngleY = 0F;
-		this.bipedRightLeg.rotateAngleZ = 0F;
+		bipedLeftLeg.rotateAngleX = 0F;
+		bipedLeftLeg.rotateAngleY = 0F;
+		bipedLeftLeg.rotateAngleZ = 0F;
+		bipedRightLeg.rotateAngleX = 0F;
+		bipedRightLeg.rotateAngleY = 0F;
+		bipedRightLeg.rotateAngleZ = 0F;
 
 		// Arms
-		this.bipedLeftArm.rotationPointY = 2F;
-		this.bipedLeftArm.rotationPointZ = 0F;
-		this.bipedRightArm.rotationPointY = 2F;
-		this.bipedRightArm.rotationPointZ = 0F;
-	}
-
-	public void setRotationAnglesDancing(float par1, float par2, float par3, float par4, float par5, float par6, Entity entity)
-	{
-		float dancing = CustomNpcs.ticks / 3.978873F;
-		float x = (float) Math.sin(dancing);
-		float y = (float) Math.abs(Math.cos(dancing));
-
-		bipedRightArm.rotationPointX = -5.0F;
-		bipedLeftArm.rotationPointX = 5.0F;
-		bipedRightArm.rotationPointZ = 0.0F;
-		bipedLeftArm.rotationPointZ = 0.0F;
-
-		bipedHeadwear.rotationPointX = (bipedHead.rotationPointX = x * 0.75F);
-		bipedHeadwear.rotationPointY = (bipedHead.rotationPointY = y * 1.25F - 0.02F);
-		bipedHeadwear.rotationPointZ = (bipedHead.rotationPointZ = -y * 0.75F);
-
-		bipedLeftArm.rotationPointX += x * 0.25F;
-		bipedLeftArm.rotationPointY = y * 1.25F + 2F;
-
-		bipedRightArm.rotationPointX += x * 0.25F;
-		bipedRightArm.rotationPointY = y * 1.25F + 2F;
-
-		bipedBody.rotationPointX = (x * 0.25F);
+		bipedLeftArm.rotationPointY = 2F;
+		bipedLeftArm.rotationPointZ = 0F;
+		bipedRightArm.rotationPointY = 2F;
+		bipedRightArm.rotationPointZ = 0F;
 	}
 
 	public void setRotationAnglesHug(float par1, float par2, float par3, float par4, float par5, float par6, Entity entity)
