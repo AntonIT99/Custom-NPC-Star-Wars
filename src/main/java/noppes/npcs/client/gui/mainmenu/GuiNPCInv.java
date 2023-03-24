@@ -58,17 +58,17 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
         addButton(new GuiNpcButton(11, guiLeft + 375, guiTop + 13, 30, 20, "1"));
         addButton(new GuiNpcButton(12, guiLeft + 375, guiTop + 34, 30, 20, "2"));
 
-        addLabel(new GuiNpcLabel(30,"Melee", guiLeft + 371, guiTop + 60));
-        addLabel(new GuiNpcLabel(31,"Stats", guiLeft + 371, guiTop + 70));
-        addButton(new GuiNpcButton(32,guiLeft + 375, guiTop + 80, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useWeaponMeleeStats ? 1:0));
+        addLabel(new GuiNpcLabel(70,"Melee", guiLeft + 371, guiTop + 60));
+        addLabel(new GuiNpcLabel(71,"Stats", guiLeft + 371, guiTop + 70));
+        addButton(new GuiNpcButton(72,guiLeft + 375, guiTop + 80, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useWeaponMeleeStats ? 1:0));
 
-        addLabel(new GuiNpcLabel(33,"Ranged", guiLeft + 371, guiTop + 110));
-        addLabel(new GuiNpcLabel(34,"Stats", guiLeft + 371, guiTop + 120));
-        addButton(new GuiNpcButton(35,guiLeft + 375, guiTop + 130, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useWeaponRangedStats ? 1:0));
+        addLabel(new GuiNpcLabel(73,"Ranged", guiLeft + 371, guiTop + 110));
+        addLabel(new GuiNpcLabel(74,"Stats", guiLeft + 371, guiTop + 120));
+        addButton(new GuiNpcButton(75,guiLeft + 375, guiTop + 130, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useWeaponRangedStats ? 1:0));
 
-        addLabel(new GuiNpcLabel(36,"Armor", guiLeft + 371, guiTop + 160));
-        addLabel(new GuiNpcLabel(37,"Stats", guiLeft + 371, guiTop + 170));
-        addButton(new GuiNpcButton(38,guiLeft + 375, guiTop + 180, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useArmorStats ? 1:0));
+        addLabel(new GuiNpcLabel(76,"Armor", guiLeft + 371, guiTop + 160));
+        addLabel(new GuiNpcLabel(77,"Stats", guiLeft + 371, guiTop + 170));
+        addButton(new GuiNpcButton(78,guiLeft + 375, guiTop + 180, 30, 20, new String[]{"gui.no", "gui.yes"}, npc.inventory.useArmorStats ? 1:0));
 
         for(int c = 0; c < 4; c++) {
             for (int r = 0; r < 9; r++) {
@@ -109,14 +109,36 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
     }
 
     @Override
-	protected void actionPerformed(GuiButton guibutton) {
-    	if(guibutton.id == 10){
+	protected void actionPerformed(GuiButton guibutton)
+    {
+    	if(guibutton.id == 10)
+        {
     		npc.inventory.lootMode = ((GuiNpcButton)guibutton).getValue();
     	}
-        if(guibutton.id == 11 || guibutton.id == 12){
+        if(guibutton.id == 11 || guibutton.id == 12)
+        {
             this.inventoryTab = Integer.parseInt(guibutton.displayString)-1;
             initGui();
         }
+        if(guibutton.id == 72)
+        {
+           npc.inventory.useWeaponMeleeStats = ((GuiNpcButton)guibutton).getValue() == 1;
+           if (npc.inventory.useWeaponMeleeStats)
+               npc.inventory.setWeapons(npc.inventory.getWeapons());
+        }
+        if(guibutton.id == 75)
+        {
+            npc.inventory.useWeaponRangedStats = ((GuiNpcButton)guibutton).getValue() == 1;
+            if (npc.inventory.useWeaponRangedStats)
+                npc.inventory.setWeapons(npc.inventory.getWeapons());
+        }
+        if(guibutton.id == 78)
+        {
+            npc.inventory.useArmorStats = ((GuiNpcButton)guibutton).getValue() == 1;
+            if (npc.inventory.useArmorStats)
+                npc.inventory.setArmor(npc.inventory.getArmor());
+        }
+
     }
 
 	protected void drawGuiContainerBackgroundLayer(float f, int i, int j)
@@ -190,10 +212,12 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
     	npc.inventory.minExp = getTextField(0).getInteger();
     	npc.inventory.maxExp = getTextField(1).getInteger();
     	Client.sendData(EnumPacketServer.MainmenuInvSave, npc.inventory.writeEntityToNBT(new NBTTagCompound()));
+        Client.sendData(EnumPacketServer.MainmenuStatsSave, npc.stats.writeToNBT(new NBTTagCompound()));
 	}
 	
 	@Override
 	public void setGuiData(NBTTagCompound compound) {
+        //npc.stats.readToNBT(compound);
 		npc.inventory.readEntityFromNBT(compound);
 		initGui();
 	}

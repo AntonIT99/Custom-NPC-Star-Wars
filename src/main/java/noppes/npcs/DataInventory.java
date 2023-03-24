@@ -3,9 +3,11 @@ package noppes.npcs;
 import java.util.ArrayList;
 import java.util.HashMap;
 
+import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
 import net.minecraft.entity.item.EntityItem;
@@ -13,12 +15,12 @@ import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.inventory.IInventory;
 import net.minecraft.item.Item;
+import net.minecraft.item.ItemArmor;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.ItemSword;
-import net.minecraft.item.ItemTool;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
+
 import noppes.npcs.entity.EntityNPCInterface;
 
 public class DataInventory implements IInventory{
@@ -34,9 +36,9 @@ public class DataInventory implements IInventory{
 
 	private EntityNPCInterface npc;
 
-	public boolean useWeaponMeleeStats = true;
-	public boolean useWeaponRangedStats = true;
-	public boolean useArmorStats = true;
+	public boolean useWeaponMeleeStats;
+	public boolean useWeaponRangedStats;
+	public boolean useArmorStats;
 	
 	public DataInventory(EntityNPCInterface npc){
 		this.npc = npc;
@@ -49,7 +51,9 @@ public class DataInventory implements IInventory{
 		nbttagcompound.setTag("Weapons", NBTTags.nbtItemStackList(getWeapons()));
 		nbttagcompound.setTag("DoubleDropChance", NBTTags.nbtIntegerDoubleMap(dropchance));
 		nbttagcompound.setInteger("LootMode", lootMode);
-		
+		nbttagcompound.setBoolean("UseWeaponMeleeStats", useWeaponMeleeStats);
+		nbttagcompound.setBoolean("UseWeaponRangedStats", useWeaponRangedStats);
+		nbttagcompound.setBoolean("UseArmorStats", useArmorStats);
 		return nbttagcompound;
 	}
 	public void readEntityFromNBT(NBTTagCompound nbttagcompound){
@@ -70,57 +74,102 @@ public class DataInventory implements IInventory{
 		}
 
 		lootMode = nbttagcompound.getInteger("LootMode");
+		useWeaponMeleeStats = nbttagcompound.getBoolean("UseWeaponMeleeStats");
+		useWeaponRangedStats = nbttagcompound.getBoolean("UseWeaponRangedStats");
+		useArmorStats = nbttagcompound.getBoolean("UseArmorStats");
 	}
 	public HashMap<Integer, ItemStack> getWeapons() {
 		return weapons;
 	}
 	public void setWeapons(HashMap<Integer, ItemStack> list) {
 		weapons = list;
+		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
 	}
 	public HashMap<Integer, ItemStack> getArmor() {
 		return armor;
 	}
 	public void setArmor(HashMap<Integer, ItemStack> list) {
 		armor = list;
+		setArmorStats(armor);
 	}
 	public ItemStack getWeapon(){
 		return weapons.get(0);
 	}
-	public void setWeapon(ItemStack itemStack){
-		weapons.put(0, itemStack);
-
-		if (itemStack == null)
-			return;
-
-		Item item = itemStack.getItem();
-		if (useWeaponMeleeStats)
-		{
-			if (item instanceof ItemSword)
-			{
-				AttributeModifier attribute = (AttributeModifier) item.getAttributeModifiers(itemStack).get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName()).toArray()[0];
-				System.out.print(attribute.getAmount());
-				/*npc.stats.setAttackStrength(
-						(AttributeModifier)item.getItemAttributeModifiers().get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName())
-				);*/
-			}
-			else if (item instanceof ItemTool)
-			{
-
-			}
-
-		}
+	public void setWeapon(ItemStack item){
+		weapons.put(0, item);
+		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
 	}
 	public ItemStack getProjectile(){
 		return weapons.get(1);
 	}
 	public void setProjectile(ItemStack item){
 		weapons.put(1, item);
+		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
 	}
 	public ItemStack getOffHand(){
 		return weapons.get(2);
 	}
 	public void setOffHand(ItemStack item){
 		weapons.put(2, item);
+	}
+
+
+	private void setArmorStats(HashMap<Integer, ItemStack> armor)
+	{
+		if (!useArmorStats)
+			return;
+
+		for (int i = 0; i < 4; i++)
+		{
+			if (armor.get(i) == null)
+				continue;
+
+			if (armor.get(i).getItem() instanceof ItemArmor)
+			{
+
+			}
+		}
+	}
+
+	private void setWeaponStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
+	{
+		if (useWeaponMeleeStats)
+		{
+			setMeleeStats(mainWeapon, offHandWeapon);
+		}
+
+		if (useWeaponRangedStats)
+		{
+			setRangedStats(mainWeapon, projectile, offHandWeapon);
+		}
+	}
+
+	private void setMeleeStats(ItemStack mainWeapon, ItemStack offHandWeapon)
+	{
+		if (mainWeapon != null)
+		{
+			float enchantmentDamage = 0F;
+			if (mainWeapon.isItemEnchanted())
+			{
+				NBTTagCompound tag = mainWeapon.getEnchantmentTagList().getCompoundTagAt(0);
+				if (tag.hasKey("id") && tag.hasKey("lvl"))
+				{
+					int enchantID = tag.getInteger("id");
+					int enchantLevel = tag.getInteger("lvl");
+					enchantmentDamage = Enchantment.enchantmentsList[enchantID].func_152376_a(enchantLevel, EnumCreatureAttribute.UNDEFINED);
+				}
+			}
+			AttributeModifier[] damageAttribute = (AttributeModifier[]) mainWeapon.getItem().getAttributeModifiers(mainWeapon).get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName()).toArray(new AttributeModifier[0]);
+			if (damageAttribute.length > 0)
+			{
+				npc.stats.setAttackStrength((float) damageAttribute[0].getAmount() + enchantmentDamage);
+			}
+		}
+	}
+
+	private void setRangedStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
+	{
+
 	}
 
 	public ArrayList<ItemStack> getDroppedItems(DamageSource damagesource) {
