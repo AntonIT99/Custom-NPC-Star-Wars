@@ -1,7 +1,8 @@
 package noppes.npcs.entity;
 
+import com.flansmod.client.FlansModClient;
+import com.flansmod.client.model.GunAnimations;
 import com.flansmod.common.guns.*;
-import com.flansmod.common.vector.Vector3f;
 import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
@@ -594,11 +595,47 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 					projectile.damage = event.getDamage();
 				}
 			}
+			if (!worldObj.isRemote)
+				animateFlanGun();
 			this.playSound(this.stats.fireSound, 2.0F, 1.0f);
 		}
 	}
 
-	private void shootFlanProjectile(ItemShootable item)
+	protected void animateFlanGun()
+	{
+		ItemStack heldItem = getHeldItem();
+		ItemStack offHandItem = getOffHand();
+		if (heldItem != null && heldItem.getItem() instanceof ItemGun)
+		{
+			GunType gunType = ((ItemGun)heldItem.getItem()).type;
+			GunAnimations animations = FlansModClient.getGunAnimations(this, false);
+
+			int pumpDelay = gunType.model == null ? 0 : gunType.model.pumpDelay;
+			int pumpTime = gunType.model == null ? 1 : gunType.model.pumpTime;
+			int hammerDelay = gunType.model == null ? 0 : gunType.model.hammerDelay;
+			int casingDelay = gunType.model == null ? 0 : gunType.model.casingDelay;
+			float hammerAngle = gunType.model == null ? 0 : gunType.model.hammerAngle;
+			float althammerAngle = gunType.model == null ? 0 : gunType.model.althammerAngle;
+
+			animations.doShoot(pumpDelay, pumpTime, hammerDelay, hammerAngle, althammerAngle, casingDelay);
+		}
+		if (offHandItem != null && offHandItem.getItem() instanceof ItemGun)
+		{
+			GunType gunType = ((ItemGun)offHandItem.getItem()).type;
+			GunAnimations animations = FlansModClient.getGunAnimations(this, true);
+
+			int pumpDelay = gunType.model == null ? 0 : gunType.model.pumpDelay;
+			int pumpTime = gunType.model == null ? 1 : gunType.model.pumpTime;
+			int hammerDelay = gunType.model == null ? 0 : gunType.model.hammerDelay;
+			int casingDelay = gunType.model == null ? 0 : gunType.model.casingDelay;
+			float hammerAngle = gunType.model == null ? 0 : gunType.model.hammerAngle;
+			float althammerAngle = gunType.model == null ? 0 : gunType.model.althammerAngle;
+
+			animations.doShoot(pumpDelay, pumpTime, hammerDelay, hammerAngle, althammerAngle, casingDelay);
+		}
+	}
+
+	protected void shootFlanProjectile(ItemShootable item)
 	{
 		EntityShootable shot;
 
@@ -614,7 +651,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 					rotationYawHead,
 					rotationPitch,
 					this,
-					1F, //20F * ((float)Math.exp(1F - ((float)stats.accuracy / 100F)) - 1F),
+					accuracyToBulletSpread(stats.accuracy),
 					stats.pDamage,
 					stats.pSpeed,
 					0,
@@ -626,6 +663,16 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			((EntityBullet) shot).shotgun = stats.shotCount > 1;
 
 		worldObj.spawnEntityInWorld(shot);
+	}
+
+	public static float accuracyToBulletSpread(int accuracy)
+	{
+		return Math.max((float) ((2D * 0.007499999832361937D / 0.005D) * (20D - (accuracy / 5D))), 0F);
+	}
+
+	public static int bulletSpreadToAccuracy(float spread)
+	{
+		return Math.max((int) Math.round(100D - (((5D * 0.005D)/(2D * 0.007499999832361937D)) * spread)), 0);
 	}
 
 	public EntityProjectile shoot(EntityLivingBase entity, int accuracy, ItemStack proj, boolean indirect){

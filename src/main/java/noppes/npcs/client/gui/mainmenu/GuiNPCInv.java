@@ -125,18 +125,21 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
            npc.inventory.useWeaponMeleeStats = ((GuiNpcButton)guibutton).getValue() == 1;
            if (npc.inventory.useWeaponMeleeStats)
                npc.inventory.setWeapons(npc.inventory.getWeapons());
+           save();
         }
         if(guibutton.id == 75)
         {
             npc.inventory.useWeaponRangedStats = ((GuiNpcButton)guibutton).getValue() == 1;
             if (npc.inventory.useWeaponRangedStats)
                 npc.inventory.setWeapons(npc.inventory.getWeapons());
+            save();
         }
         if(guibutton.id == 78)
         {
             npc.inventory.useArmorStats = ((GuiNpcButton)guibutton).getValue() == 1;
             if (npc.inventory.useArmorStats)
                 npc.inventory.setArmor(npc.inventory.getArmor());
+            save();
         }
 
     }
@@ -217,7 +220,6 @@ public class GuiNPCInv extends GuiContainerNPCInterface2 implements IGuiData, IT
 	
 	@Override
 	public void setGuiData(NBTTagCompound compound) {
-        //npc.stats.readToNBT(compound);
 		npc.inventory.readEntityFromNBT(compound);
 		initGui();
 	}

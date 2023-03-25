@@ -1,8 +1,6 @@
 package noppes.npcs;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 
 import net.minecraft.enchantment.Enchantment;
@@ -12,6 +10,7 @@ import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.EnumCreatureAttribute;
 import net.minecraft.entity.SharedMonsterAttributes;
 import net.minecraft.entity.ai.attributes.AttributeModifier;
+import net.minecraft.entity.ai.attributes.IAttribute;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.item.EntityXPOrb;
 import net.minecraft.entity.player.EntityPlayer;
@@ -25,7 +24,6 @@ import net.minecraft.util.MathHelper;
 
 import com.flansmod.common.guns.*;
 import com.flansmod.common.teams.ItemTeamArmour;
-import noppes.npcs.constants.EnumParticleType;
 import noppes.npcs.constants.EnumPotionType;
 import noppes.npcs.entity.EntityNPCInterface;
 
@@ -90,6 +88,7 @@ public class DataInventory implements IInventory{
 	public void setWeapons(HashMap<Integer, ItemStack> list) {
 		weapons = list;
 		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setKnockbackResistance(weapons, armor);
 	}
 	public HashMap<Integer, ItemStack> getArmor() {
 		return armor;
@@ -97,6 +96,7 @@ public class DataInventory implements IInventory{
 	public void setArmor(HashMap<Integer, ItemStack> list) {
 		armor = list;
 		setArmorStats(armor);
+		setKnockbackResistance(weapons, armor);
 	}
 	public ItemStack getWeapon(){
 		return weapons.get(0);
@@ -104,6 +104,7 @@ public class DataInventory implements IInventory{
 	public void setWeapon(ItemStack item){
 		weapons.put(0, item);
 		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setKnockbackResistance(weapons, armor);
 	}
 	public ItemStack getProjectile(){
 		return weapons.get(1);
@@ -111,14 +112,36 @@ public class DataInventory implements IInventory{
 	public void setProjectile(ItemStack item){
 		weapons.put(1, item);
 		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setKnockbackResistance(weapons, armor);
 	}
 	public ItemStack getOffHand(){
 		return weapons.get(2);
 	}
 	public void setOffHand(ItemStack item){
 		weapons.put(2, item);
+		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setKnockbackResistance(weapons, armor);
 	}
 
+	private void setKnockbackResistance(Map<Integer, ItemStack> weapons, Map<Integer, ItemStack> armor)
+	{
+		if (useWeaponMeleeStats || useWeaponRangedStats || useArmorStats)
+		{
+			AtomicReference<Float> knockbackResistance = new AtomicReference<>(1F);
+			List<ItemStack> itemList = new ArrayList<>();
+
+			if (useWeaponMeleeStats || useWeaponRangedStats)
+				itemList.addAll(weapons.values());
+			if (useArmorStats)
+				itemList.addAll(armor.values());
+
+			for (ItemStack item : itemList)
+			{
+				getAttributeModifier(item, SharedMonsterAttributes.knockbackResistance).ifPresent(value -> knockbackResistance.set(knockbackResistance.get() + (float) value));
+			}
+			npc.stats.resistances.knockback = knockbackResistance.get();
+		}
+	}
 
 	private void setArmorStats(HashMap<Integer, ItemStack> armor)
 	{
@@ -128,8 +151,6 @@ public class DataInventory implements IInventory{
 		float meleeResistance = 1F;
 		float projectileResistance = 1F;
 		float explosionResistance = 1F;
-		float knockback = 1F;
-		float speedModifier = 1F;
 		int protectionLevel = 0;
 		int projectileProtectionLevel = 0;
 		int blastProtectionLevel = 0;
@@ -154,7 +175,6 @@ public class DataInventory implements IInventory{
 					meleeResistance += ((ItemTeamArmour)item).type.defence;
 					projectileResistance += ((ItemTeamArmour)item).type.bulletDefence;
 					explosionResistance += ((ItemTeamArmour)item).type.defence;
-					knockback += ((ItemTeamArmour)item).type.knockbackModifier;
 
 					if (((ItemTeamArmour)item).type.negateFallDamage)
 						npc.stats.noFallDamage = true;
@@ -162,8 +182,6 @@ public class DataInventory implements IInventory{
 						npc.stats.immuneToFire = true;
 					if (((ItemTeamArmour)item).type.waterBreathing)
 						npc.stats.drowningType = 0;
-
-					speedModifier += ((ItemTeamArmour)item).type.moveSpeedModifier - 1F;
 				}
 				else
 				{
@@ -177,11 +195,6 @@ public class DataInventory implements IInventory{
 		npc.stats.resistances.playermelee = meleeResistance + protectionLevel * 0.04F * (2F - meleeResistance);
 		npc.stats.resistances.arrow = projectileResistance + projectileProtectionLevel * 0.04F * (2F - meleeResistance);
 		npc.stats.resistances.explosion = explosionResistance + blastProtectionLevel * 0.04F * (2F - meleeResistance);
-		npc.stats.resistances.knockback = knockback;
-		if (speedModifier > 0F)
-		{
-			npc.ai.speedModifier = speedModifier;
-		}
 	}
 
 	private void setWeaponStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
@@ -230,12 +243,7 @@ public class DataInventory implements IInventory{
 			return 0F;
 
 		AtomicReference<Float> damage = new AtomicReference<>(0F);
-
-		AttributeModifier[] mainWeaponDamageAttribute = (AttributeModifier[]) item.getItem().getAttributeModifiers(item).get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName()).toArray(new AttributeModifier[0]);
-		if (mainWeaponDamageAttribute.length > 0)
-		{
-			damage.set((float) mainWeaponDamageAttribute[0].getAmount());
-		}
+		getAttributeModifier(item, SharedMonsterAttributes.attackDamage).ifPresent(value -> damage.set((float)value));
 
 		if (item.isItemEnchanted())
 		{
@@ -246,14 +254,25 @@ public class DataInventory implements IInventory{
 		return damage.get();
 	}
 
+	private OptionalDouble getAttributeModifier(ItemStack item, IAttribute attribute)
+	{
+		if (item != null)
+		{
+			AttributeModifier[] attributeModifier = (AttributeModifier[]) item.getItem().getAttributeModifiers(item).get(attribute.getAttributeUnlocalizedName()).toArray(new AttributeModifier[0]);
+			if (attributeModifier.length > 0)
+			{
+				return OptionalDouble.of(attributeModifier[0].getAmount());
+			}
+		}
+		return OptionalDouble.empty();
+	}
+
 	private void setRangedStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
 	{
 		//TODO: Take melee Flan's weapons into account
 		//TODO: Handle gun in offHand
-		//TODO: Reload Sound? Distort Sound?
-		//TODO: Implement Accuracy
+		//TODO: Reload Sound? Distort Sound? LastBulletSound?
 		//TODO: Implement Non Flan projectiles / Ranged Weapons / Enchantments / Potions
-		//TODO: Muzzle Flashes?
 
 		if (mainWeapon != null)
 		{
@@ -275,14 +294,14 @@ public class DataInventory implements IInventory{
 				}
 
 				npc.stats.pDamage = gun.getDamage(mainWeapon);
-				npc.stats.pSpeed = (int)bulletSpeed;
+				npc.stats.pSpeed = Math.round(Math.max(bulletSpeed, 1F));
+				npc.stats.accuracy = EntityNPCInterface.bulletSpreadToAccuracy(gun.getSpread(mainWeapon, false, false));
 				npc.stats.minDelay = (int)Math.floor(reloadTime);
 				npc.stats.maxDelay = (int)Math.ceil(reloadTime);
 				npc.stats.fireRate = Math.round(fireRate);
 				npc.stats.shotCount = gun.getNumBullets(mainWeapon);
 				npc.stats.fireSound = getGunSound(mainWeapon, gun);
 			}
-
 		}
 
 		if (projectile != null)

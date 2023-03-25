@@ -57,8 +57,6 @@ public class DataAI {
 	public boolean movingPause = true;
 
 	public boolean ignoreCobweb = false;
-
-	public float speedModifier = 1F;
 	
 	public DataAI(EntityNPCInterface npc){
 		this.npc = npc;
@@ -260,7 +258,7 @@ public class DataAI {
 	
 	public void setWalkingSpeed(int speed){
 		this.moveSpeed = speed;
-		npc.getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue(npc.getSpeed() * speedModifier);
+		npc.getEntityAttribute(SharedMonsterAttributes.movementSpeed).setBaseValue(npc.getSpeed());
 	}
 	
 	public int getWalkingSpeed(){
