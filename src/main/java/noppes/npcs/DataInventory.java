@@ -2,6 +2,8 @@ package noppes.npcs;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicReference;
 
 import net.minecraft.enchantment.Enchantment;
 import net.minecraft.enchantment.EnchantmentHelper;
@@ -21,6 +23,10 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
 
+import com.flansmod.common.guns.*;
+import com.flansmod.common.teams.ItemTeamArmour;
+import noppes.npcs.constants.EnumParticleType;
+import noppes.npcs.constants.EnumPotionType;
 import noppes.npcs.entity.EntityNPCInterface;
 
 public class DataInventory implements IInventory{
@@ -119,6 +125,15 @@ public class DataInventory implements IInventory{
 		if (!useArmorStats)
 			return;
 
+		float meleeResistance = 1F;
+		float projectileResistance = 1F;
+		float explosionResistance = 1F;
+		float knockback = 1F;
+		float speedModifier = 1F;
+		int protectionLevel = 0;
+		int projectileProtectionLevel = 0;
+		int blastProtectionLevel = 0;
+
 		for (int i = 0; i < 4; i++)
 		{
 			if (armor.get(i) == null)
@@ -126,8 +141,46 @@ public class DataInventory implements IInventory{
 
 			if (armor.get(i).getItem() instanceof ItemArmor)
 			{
+				if (armor.get(i).isItemEnchanted())
+				{
+					protectionLevel += EnchantmentHelper.getEnchantmentLevel(Enchantment.protection.effectId, armor.get(i));
+					projectileProtectionLevel += EnchantmentHelper.getEnchantmentLevel(Enchantment.projectileProtection.effectId, armor.get(i));
+					blastProtectionLevel += EnchantmentHelper.getEnchantmentLevel(Enchantment.blastProtection.effectId, armor.get(i));
+				}
 
+				ItemArmor item = (ItemArmor) armor.get(i).getItem();
+				if (item instanceof ItemTeamArmour)
+				{
+					meleeResistance += ((ItemTeamArmour)item).type.defence;
+					projectileResistance += ((ItemTeamArmour)item).type.bulletDefence;
+					explosionResistance += ((ItemTeamArmour)item).type.defence;
+					knockback += ((ItemTeamArmour)item).type.knockbackModifier;
+
+					if (((ItemTeamArmour)item).type.negateFallDamage)
+						npc.stats.noFallDamage = true;
+					if (((ItemTeamArmour)item).type.fireResistance)
+						npc.stats.immuneToFire = true;
+					if (((ItemTeamArmour)item).type.waterBreathing)
+						npc.stats.drowningType = 0;
+
+					speedModifier += ((ItemTeamArmour)item).type.moveSpeedModifier - 1F;
+				}
+				else
+				{
+					meleeResistance += 0.04F * item.damageReduceAmount;
+					projectileResistance += 0.04F * item.damageReduceAmount;
+					explosionResistance += 0.04F * item.damageReduceAmount;
+				}
 			}
+		}
+
+		npc.stats.resistances.playermelee = meleeResistance + protectionLevel * 0.04F * (2F - meleeResistance);
+		npc.stats.resistances.arrow = projectileResistance + projectileProtectionLevel * 0.04F * (2F - meleeResistance);
+		npc.stats.resistances.explosion = explosionResistance + blastProtectionLevel * 0.04F * (2F - meleeResistance);
+		npc.stats.resistances.knockback = knockback;
+		if (speedModifier > 0F)
+		{
+			npc.ai.speedModifier = speedModifier;
 		}
 	}
 
@@ -146,30 +199,119 @@ public class DataInventory implements IInventory{
 
 	private void setMeleeStats(ItemStack mainWeapon, ItemStack offHandWeapon)
 	{
+		float damageMainWeapon = 0F;
+		float damageOffHandWeapon = 0F;
+		int fireAspectLevel = 0;
+
 		if (mainWeapon != null)
 		{
-			float enchantmentDamage = 0F;
-			if (mainWeapon.isItemEnchanted())
-			{
-				NBTTagCompound tag = mainWeapon.getEnchantmentTagList().getCompoundTagAt(0);
-				if (tag.hasKey("id") && tag.hasKey("lvl"))
-				{
-					int enchantID = tag.getInteger("id");
-					int enchantLevel = tag.getInteger("lvl");
-					enchantmentDamage = Enchantment.enchantmentsList[enchantID].func_152376_a(enchantLevel, EnumCreatureAttribute.UNDEFINED);
-				}
-			}
-			AttributeModifier[] damageAttribute = (AttributeModifier[]) mainWeapon.getItem().getAttributeModifiers(mainWeapon).get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName()).toArray(new AttributeModifier[0]);
-			if (damageAttribute.length > 0)
-			{
-				npc.stats.setAttackStrength((float) damageAttribute[0].getAmount() + enchantmentDamage);
-			}
+			damageMainWeapon = getMeleeDamage(mainWeapon);
 		}
+		if (offHandWeapon != null)
+		{
+			damageOffHandWeapon = getMeleeDamage(offHandWeapon);
+		}
+
+		fireAspectLevel = Math.max(EnchantmentHelper.getEnchantmentLevel(Enchantment.fireAspect.effectId, mainWeapon), EnchantmentHelper.getEnchantmentLevel(Enchantment.knockback.effectId, offHandWeapon));
+
+		npc.stats.setAttackStrength(Math.max(damageMainWeapon, damageOffHandWeapon) + 1F);
+		npc.stats.knockback = Math.max(EnchantmentHelper.getEnchantmentLevel(Enchantment.knockback.effectId, mainWeapon), EnchantmentHelper.getEnchantmentLevel(Enchantment.knockback.effectId, offHandWeapon));
+
+		if (fireAspectLevel > 0)
+		{
+			npc.stats.potionType = EnumPotionType.Fire;
+			npc.stats.potionDuration = 4 * fireAspectLevel;
+		}
+	}
+
+	private float getMeleeDamage(ItemStack item)
+	{
+		if (item == null)
+			return 0F;
+
+		AtomicReference<Float> damage = new AtomicReference<>(0F);
+
+		AttributeModifier[] mainWeaponDamageAttribute = (AttributeModifier[]) item.getItem().getAttributeModifiers(item).get(SharedMonsterAttributes.attackDamage.getAttributeUnlocalizedName()).toArray(new AttributeModifier[0]);
+		if (mainWeaponDamageAttribute.length > 0)
+		{
+			damage.set((float) mainWeaponDamageAttribute[0].getAmount());
+		}
+
+		if (item.isItemEnchanted())
+		{
+			Map enchantments = EnchantmentHelper.getEnchantments(item);
+			enchantments.forEach((id, level) -> damage.set(damage.get() + Enchantment.enchantmentsList[(Integer)id].func_152376_a((Integer) level, EnumCreatureAttribute.UNDEFINED)));
+		}
+
+		return damage.get();
 	}
 
 	private void setRangedStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
 	{
+		//TODO: Take melee Flan's weapons into account
+		//TODO: Handle gun in offHand
+		//TODO: Reload Sound? Distort Sound?
+		//TODO: Implement Accuracy
+		//TODO: Implement Non Flan projectiles / Ranged Weapons / Enchantments / Potions
+		//TODO: Muzzle Flashes?
 
+		if (mainWeapon != null)
+		{
+			Item mainWeapomItem = mainWeapon.getItem();
+			if (mainWeapomItem instanceof ItemGun)
+			{
+				GunType gun = ((ItemGun) mainWeapomItem).type;
+				float reloadTime = gun.getReloadTime(mainWeapon);
+				float fireRate = gun.getShootDelay(mainWeapon);
+				float bulletSpeed;
+
+				if (projectile != null)
+				{
+					bulletSpeed = gun.getBulletSpeed(mainWeapon, projectile);
+				}
+				else
+				{
+					bulletSpeed = gun.getBulletSpeed(mainWeapon);
+				}
+
+				npc.stats.pDamage = gun.getDamage(mainWeapon);
+				npc.stats.pSpeed = (int)bulletSpeed;
+				npc.stats.minDelay = (int)Math.floor(reloadTime);
+				npc.stats.maxDelay = (int)Math.ceil(reloadTime);
+				npc.stats.fireRate = Math.round(fireRate);
+				npc.stats.shotCount = gun.getNumBullets(mainWeapon);
+				npc.stats.fireSound = getGunSound(mainWeapon, gun);
+			}
+
+		}
+
+		if (projectile != null)
+		{
+			Item projectileItem = projectile.getItem();
+			if (projectileItem instanceof ItemShootable)
+			{
+				ShootableType shootable = ((ItemShootable) projectileItem).type;
+				npc.stats.burstCount = shootable.roundsPerItem;
+			}
+		}
+	}
+
+	private String getGunSound(ItemStack stack, GunType gunType)
+	{
+		AttachmentType barrel = gunType.getBarrel(stack);
+		AttachmentType grip = gunType.getGrip(stack);
+
+		boolean silenced = barrel != null && barrel.silencer && !gunType.getSecondaryFire(stack);
+		String soundToPlay = null;
+
+		if (gunType.getSecondaryFire(stack) && grip != null && grip.secondaryShootSound != null)
+			soundToPlay = grip.secondaryShootSound;
+		else if (silenced && gunType.suppressedShootSound != null)
+			soundToPlay = gunType.suppressedShootSound;
+		else if (gunType.shootSound != null)
+			soundToPlay = gunType.shootSound;
+
+		return "flansmod:" + soundToPlay;
 	}
 
 	public ArrayList<ItemStack> getDroppedItems(DamageSource damagesource) {

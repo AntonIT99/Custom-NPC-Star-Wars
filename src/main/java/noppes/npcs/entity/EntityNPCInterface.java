@@ -1,6 +1,7 @@
 package noppes.npcs.entity;
 
 import com.flansmod.common.guns.*;
+import com.flansmod.common.vector.Vector3f;
 import io.netty.buffer.ByteBuf;
 
 import java.io.IOException;
@@ -599,26 +600,32 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	private void shootFlanProjectile(ItemShootable item)
 	{
-		EntityShootable shot = item.getEntity(
-				worldObj,
-				Vec3.createVectorHelper(posX, posY + getEyeHeight(), posZ),
-				rotationYawHead,
-				rotationPitch,
-				this,
-				1F, //20F * ((float)Math.exp(1F - ((float)stats.accuracy / 100F)) - 1F),
-				stats.pDamage,
-				stats.pSpeed,
-				0,
-				item.type
-		);
+		EntityShootable shot;
+
+		if (item instanceof ItemGrenade)
+		{
+			shot = ((ItemGrenade) item).getGrenade(worldObj, this);
+		}
+		else
+		{
+			shot = item.getEntity(
+					worldObj,
+					Vec3.createVectorHelper(posX, posY + getEyeHeight(), posZ),
+					rotationYawHead,
+					rotationPitch,
+					this,
+					1F, //20F * ((float)Math.exp(1F - ((float)stats.accuracy / 100F)) - 1F),
+					stats.pDamage,
+					stats.pSpeed,
+					0,
+					item.type
+			);
+		}
 
 		if (shot instanceof EntityBullet)
 			((EntityBullet) shot).shotgun = stats.shotCount > 1;
 
 		worldObj.spawnEntityInWorld(shot);
-
-		/*this(world, , shooter, spread, gunDamage, type1, speed, shotFrom);
-		shotgun = shot;*/
 	}
 
 	public EntityProjectile shoot(EntityLivingBase entity, int accuracy, ItemStack proj, boolean indirect){
