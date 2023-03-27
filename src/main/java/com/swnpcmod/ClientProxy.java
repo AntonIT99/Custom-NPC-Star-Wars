@@ -23,5 +23,6 @@ public class ClientProxy extends CommonProxy
         RenderingRegistry.registerEntityRenderingHandler(EntityTwilekFemale.class, new RenderStarWarsNPC(new ModelTwilek(0F), 0.88F, "twilekfemale/twilek.png"));
 
         armorModels.put(SWNPCMod.twilekMaleOutfit1, new ModelTwilek(0.1F));
+        armorModels.put(SWNPCMod.twilekFemaleOutfit1, new ModelTwilek(0.1F));
     }
 }

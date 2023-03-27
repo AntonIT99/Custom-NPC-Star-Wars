@@ -29,7 +29,7 @@ public class SWNPCMod
     @Instance(Strings.MOD_ID)
     public static SWNPCMod modInstance;
 
-    public static Item twilekMaleOutfit1;
+    public static Item twilekMaleOutfit1, twilekFemaleOutfit1;
 
 
     @EventHandler
@@ -37,9 +37,10 @@ public class SWNPCMod
     {
         ModEntityRegistry.registerEntities();
 
-        ItemArmor.ArmorMaterial swArmorMaterial = EnumHelper.addArmorMaterial("swArmorMaterial", 0, new int[]{1, 3, 2, 1}, 15);
+        ItemArmor.ArmorMaterial swArmorMaterial = EnumHelper.addArmorMaterial("swArmorMaterial", 30, new int[]{0, 6, 0, 0}, 15);
 
         twilekMaleOutfit1 = new CustomArmorItem(swArmorMaterial, "twilek_male_outfit1", "outfit", 1, 1);
+        twilekFemaleOutfit1 = new CustomArmorItem(swArmorMaterial, "twilek_female_outfit1", "outfit", 1, 1);
     }
     @EventHandler
     public static void init(FMLInitializationEvent event)
