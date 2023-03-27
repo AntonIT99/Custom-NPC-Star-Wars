@@ -269,7 +269,7 @@ public class DataInventory implements IInventory{
 
 	private void setRangedStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
 	{
-		//TODO: Take melee Flan's weapons into account
+		//TODO: Take melee Flan's weapons into account (animation -> to test + range + attackSpeed)
 		//TODO: Handle gun in offHand
 		//TODO: Reload Sound? Distort Sound? LastBulletSound?
 		//TODO: Implement Non Flan projectiles / Ranged Weapons / Enchantments / Potions

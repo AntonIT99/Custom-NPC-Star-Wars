@@ -32,6 +32,7 @@ import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.pathfinding.PathNavigate;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -236,6 +237,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 
 		boolean var4 = par1Entity.attackEntityFrom(new NpcDamageSource("mob", this), f);
+		sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_MELEE);
 
 		if (var4){
 			if(getOwner() instanceof EntityPlayer)
@@ -595,13 +597,73 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 					projectile.damage = event.getDamage();
 				}
 			}
-			if (!worldObj.isRemote)
-				animateFlanGun();
 			this.playSound(this.stats.fireSound, 2.0F, 1.0f);
+		}
+		sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_SHOOT);
+	}
+
+	public void sendPacketWhenInRenderingRange(EnumPacketClient clientPacket)
+	{
+		List<EntityPlayer> list = MinecraftServer.getServer().getConfigurationManager().playerEntityList;
+		for (EntityPlayer player : list)
+		{
+			if (isInRangeToRender3d(player.posX, player.posY, player.posZ))
+			{
+				Server.sendData((EntityPlayerMP)player, clientPacket, getEntityId());
+			}
 		}
 	}
 
-	protected void animateFlanGun()
+	public void animateFlanGunMelee()
+	{
+		ItemStack heldItem = getHeldItem();
+		ItemStack offHandItem = getOffHand();
+		if (heldItem != null && heldItem.getItem() instanceof ItemGun)
+		{
+			GunAnimations animations = FlansModClient.getGunAnimations(this, false);
+
+			animations.doMelee(stats.attackSpeed);
+		}
+		if (offHandItem != null && offHandItem.getItem() instanceof ItemGun)
+		{
+			GunAnimations animations = FlansModClient.getGunAnimations(this, true);
+
+			animations.doMelee(stats.attackSpeed);
+		}
+	}
+
+
+	public void animateFlanGunReload()
+	{
+		ItemStack heldItem = getHeldItem();
+		ItemStack offHandItem = getOffHand();
+		if (heldItem != null && heldItem.getItem() instanceof ItemGun)
+		{
+			GunType gunType = ((ItemGun)heldItem.getItem()).type;
+			GunAnimations animations = FlansModClient.getGunAnimations(this, false);
+
+			int pumpDelay = gunType.model == null ? 0 : gunType.model.pumpDelayAfterReload;
+			int pumpTime = gunType.model == null ? 1 : gunType.model.pumpTime;
+			int chargeDelay = gunType.model == null ? 0 : gunType.model.chargeDelayAfterReload;
+			int chargeTime = gunType.model == null ? 1 : gunType.model.chargeTime;
+
+			animations.doReload(stats.minDelay, pumpDelay, pumpTime, chargeDelay, chargeTime, 1, false);
+		}
+		if (offHandItem != null && offHandItem.getItem() instanceof ItemGun)
+		{
+			GunType gunType = ((ItemGun)offHandItem.getItem()).type;
+			GunAnimations animations = FlansModClient.getGunAnimations(this, true);
+
+			int pumpDelay = gunType.model == null ? 0 : gunType.model.pumpDelayAfterReload;
+			int pumpTime = gunType.model == null ? 1 : gunType.model.pumpTime;
+			int chargeDelay = gunType.model == null ? 0 : gunType.model.chargeDelayAfterReload;
+			int chargeTime = gunType.model == null ? 1 : gunType.model.chargeTime;
+
+			animations.doReload(this.stats.minDelay, pumpDelay, pumpTime, chargeDelay, chargeTime, 1, false);
+		}
+	}
+
+	public void animateFlanGunShoot()
 	{
 		ItemStack heldItem = getHeldItem();
 		ItemStack offHandItem = getOffHand();
@@ -635,7 +697,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	protected void shootFlanProjectile(ItemShootable item)
+	public void shootFlanProjectile(ItemShootable item)
 	{
 		EntityShootable shot;
 
