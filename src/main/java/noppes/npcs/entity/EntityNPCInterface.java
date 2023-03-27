@@ -2,11 +2,41 @@ package noppes.npcs.entity;
 
 import com.flansmod.client.FlansModClient;
 import com.flansmod.client.model.GunAnimations;
+import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.*;
+import com.flansmod.common.network.PacketPlaySound;
+import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import io.netty.buffer.ByteBuf;
-
-import java.io.IOException;
-import java.util.*;
+import net.minecraftforge.common.MinecraftForge;
+import net.minecraftforge.common.util.FakePlayer;
+import net.minecraftforge.event.ServerChatEvent;
+import noppes.npcs.*;
+import noppes.npcs.ai.EntityAIMoveIndoors;
+import noppes.npcs.ai.EntityAIPanic;
+import noppes.npcs.ai.EntityAIWander;
+import noppes.npcs.ai.EntityAIWatchClosest;
+import noppes.npcs.ai.*;
+import noppes.npcs.ai.pathfinder.FlyingMoveHelper;
+import noppes.npcs.ai.pathfinder.PathNavigateFlying;
+import noppes.npcs.ai.selector.NPCAttackSelector;
+import noppes.npcs.ai.target.EntityAIClearTarget;
+import noppes.npcs.ai.target.EntityAIClosestTarget;
+import noppes.npcs.ai.target.EntityAIOwnerHurtByTarget;
+import noppes.npcs.ai.target.EntityAIOwnerHurtTarget;
+import noppes.npcs.api.entity.ICustomNpc;
+import noppes.npcs.api.item.IItemStack;
+import noppes.npcs.client.EntityUtil;
+import noppes.npcs.constants.*;
+import noppes.npcs.controllers.FactionController;
+import noppes.npcs.controllers.LinkedNpcController;
+import noppes.npcs.controllers.LinkedNpcController.LinkedData;
+import noppes.npcs.controllers.PlayerDataController;
+import noppes.npcs.controllers.data.*;
+import noppes.npcs.entity.data.DataTimers;
+import noppes.npcs.roles.*;
+import noppes.npcs.scripted.entity.ScriptNpc;
+import noppes.npcs.scripted.event.NpcEvent;
+import noppes.npcs.util.GameProfileAlt;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -36,44 +66,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.event.ServerChatEvent;
-import noppes.npcs.*;
-import noppes.npcs.ai.*;
-import noppes.npcs.ai.EntityAIMoveIndoors;
-import noppes.npcs.ai.EntityAIPanic;
-import noppes.npcs.ai.EntityAIWander;
-import noppes.npcs.ai.EntityAIWatchClosest;
-import noppes.npcs.ai.pathfinder.FlyingMoveHelper;
-import noppes.npcs.ai.pathfinder.PathNavigateFlying;
-import noppes.npcs.ai.selector.NPCAttackSelector;
-import noppes.npcs.ai.target.EntityAIClearTarget;
-import noppes.npcs.ai.target.EntityAIClosestTarget;
-import noppes.npcs.ai.target.EntityAIOwnerHurtByTarget;
-import noppes.npcs.ai.target.EntityAIOwnerHurtTarget;
-import noppes.npcs.client.EntityUtil;
-import noppes.npcs.constants.EnumAnimation;
-import noppes.npcs.constants.EnumJobType;
-import noppes.npcs.constants.EnumMovingType;
-import noppes.npcs.constants.EnumNavType;
-import noppes.npcs.constants.EnumPacketClient;
-import noppes.npcs.constants.EnumPotionType;
-import noppes.npcs.constants.EnumRoleType;
-import noppes.npcs.constants.EnumStandingType;
-import noppes.npcs.controllers.data.*;
-import noppes.npcs.controllers.FactionController;
-import noppes.npcs.controllers.LinkedNpcController;
-import noppes.npcs.controllers.LinkedNpcController.LinkedData;
-import noppes.npcs.controllers.PlayerDataController;
-import noppes.npcs.entity.data.DataTimers;
-import noppes.npcs.roles.*;
-import noppes.npcs.scripted.entity.ScriptNpc;
-import noppes.npcs.scripted.event.*;
-import noppes.npcs.api.entity.ICustomNpc;
-import noppes.npcs.api.item.IItemStack;
-import noppes.npcs.util.GameProfileAlt;
-import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
+
+import java.io.IOException;
+import java.util.*;
 
 public abstract class EntityNPCInterface extends EntityCreature implements IEntityAdditionalSpawnData, ICommandSender, IRangedAttackMob, IBossDisplayData{
 	public ICustomNpc wrappedNPC;
@@ -124,6 +119,8 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 
 	public boolean updateClient = false;
 	public boolean updateAI = false;
+
+	public boolean lastBurst = false;
 
 	public FlyingMoveHelper flyMoveHelper = new FlyingMoveHelper(this);
 	public PathNavigate flyNavigator = new PathNavigateFlying(this, worldObj);
@@ -581,11 +578,13 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			updateTasks();
 			return;
 		}
-		if (!isRemote()) {
+		if (!isRemote())
+		{
 			NpcEvent.RangedLaunchedEvent event = new NpcEvent.RangedLaunchedEvent(wrappedNPC,stats.pDamage,entity);
 			if (EventHooks.onNPCRangedAttack(this, event))
 				return;
-			for (int i = 0; i < this.stats.shotCount; i++) {
+			for (int i = 0; i < this.stats.shotCount; i++)
+			{
 				Item projectileItem = proj.getItem();
 				if (projectileItem instanceof ItemShootable)
 				{
@@ -597,9 +596,110 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 					projectile.damage = event.getDamage();
 				}
 			}
-			this.playSound(this.stats.fireSound, 2.0F, 1.0f);
+
+			if (inventory.useWeaponRangedStats && !getGuns().isEmpty())
+			{
+				for(ItemStack gun: getGuns())
+				{
+					playGunFireSound(gun);
+				}
+			}
+			else
+			{
+				playSound(stats.fireSound, 2.0F, 1.0f);
+			}
+
+			sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_SHOOT);
 		}
-		sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_SHOOT);
+	}
+
+	public void reloadGuns()
+	{
+		if (inventory.useWeaponRangedStats && !getGuns().isEmpty())
+		{
+			for(ItemStack gun: getGuns())
+			{
+				playGunReloadSound(gun);
+			}
+		}
+		sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_RELOAD);
+	}
+
+	public void playGunReloadSound(ItemStack gunStack)
+	{
+		ItemGun item = (ItemGun) gunStack.getItem();
+		GunType gunType = item.type;
+		String soundToPlay = null;
+		AttachmentType grip = gunType.getGrip(gunStack);
+
+		if (gunType.getSecondaryFire(gunStack) && grip != null && grip.secondaryReloadSound != null)
+			soundToPlay = grip.secondaryReloadSound;
+		else if (gunType.reloadSoundOnEmpty != null)
+			soundToPlay = gunType.reloadSoundOnEmpty;
+		else if (gunType.reloadSound != null)
+			soundToPlay = gunType.reloadSound;
+
+		if (soundToPlay != null)
+			PacketPlaySound.sendSoundPacket(posX, posY, posZ, gunType.reloadSoundRange, dimension, soundToPlay, true);
+	}
+
+	public void playGunFireSound(ItemStack gunStack)
+	{
+		ItemGun item = (ItemGun) gunStack.getItem();
+		GunType gunType = item.type;
+		if (item.soundDelay <= 0 && gunType.shootSound != null)
+		{
+			String soundToPlay = getGunFireSound(gunStack, gunType, lastBurst);
+
+			if (soundToPlay != null)
+			{
+				AttachmentType barrel = gunType.getBarrel(gunStack);
+				PacketPlaySound.sendSoundPacket(posX, posY, posZ, gunType.gunSoundRange, dimension, soundToPlay, gunType.distortSound, barrel != null && barrel.silencer && !gunType.getSecondaryFire(gunStack));
+			}
+
+			item.soundDelay = gunType.shootSoundLength;
+
+			if (gunType.distantShootSound != null)
+				FlansMod.packetHandler.sendToDonut(new PacketPlaySound(posX, posY, posZ, gunType.distantShootSound), posX, posY, posZ, gunType.gunSoundRange, gunType.distantSoundRange, dimension);
+		}
+	}
+
+	public static String getGunFireSound(ItemStack gunStack, GunType gunType, boolean lastBullet)
+	{
+		//TODO: fix lastBullet sound
+		AttachmentType barrel = gunType.getBarrel(gunStack);
+		AttachmentType grip = gunType.getGrip(gunStack);
+
+		boolean silenced = barrel != null && barrel.silencer && !gunType.getSecondaryFire(gunStack);
+		String soundToPlay = null;
+
+		if (gunType.getSecondaryFire(gunStack) && grip != null && grip.secondaryShootSound != null)
+			soundToPlay = grip.secondaryShootSound;
+		else if (lastBullet && gunType.lastShootSound != null)
+			soundToPlay = gunType.lastShootSound;
+		else if (silenced && gunType.suppressedShootSound != null)
+			soundToPlay = gunType.suppressedShootSound;
+		else if (gunType.shootSound != null)
+			soundToPlay = gunType.shootSound;
+
+		return soundToPlay;
+	}
+
+	public List<ItemStack> getGuns()
+	{
+		ArrayList<ItemStack> guns = new ArrayList<>();
+		ItemStack mainHand = getHeldItem();
+		ItemStack offHand = getHeldItem();
+
+		if(mainHand != null && mainHand.getItem() instanceof ItemGun)
+		{
+			guns.add(mainHand);
+		}
+		if(offHand != null && offHand.getItem() instanceof ItemGun)
+		{
+			guns.add(offHand);
+		}
+		return guns;
 	}
 
 	public void sendPacketWhenInRenderingRange(EnumPacketClient clientPacket)

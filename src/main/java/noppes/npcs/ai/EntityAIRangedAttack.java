@@ -129,7 +129,9 @@ public class EntityAIRangedAttack extends EntityAIBase
         {
             if (var1 <= (double)range && (this.entityHost.getEntitySenses().canSee(this.attackTarget) || this.entityHost.ai.canFireIndirect == 2))
             {
-            	 if (this.burstCount++ <= this.entityHost.stats.burstCount)
+                burstCount++;
+                entityHost.lastBurst = (burstCount == entityHost.stats.burstCount);
+                if (burstCount <= entityHost.stats.burstCount)
                  {
                      this.rangedAttackTime = this.entityHost.stats.fireRate;
                  }
@@ -138,19 +140,19 @@ public class EntityAIRangedAttack extends EntityAIBase
                 	 this.burstCount = 0;
                 	 this.hasFired = true;
                 	 this.rangedAttackTime = (this.entityHost.stats.maxDelay - MathHelper.floor_float(this.entityHost.getRNG().nextFloat() * (this.entityHost.stats.maxDelay - this.entityHost.stats.minDelay)));
-                     entityHost.sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_RELOAD);
+                     entityHost.reloadGuns();
                  }
-            	 
+
             	 if (this.burstCount > 1)
                  {
             		 boolean indirect = false;
-            		 
+
             		 switch(this.entityHost.ai.canFireIndirect)
             		 {
             		     case 1 : indirect = var1 > (double)range / 2; break;
             		     case 2 : indirect = !this.entityHost.getEntitySenses().canSee(this.attackTarget);
             		 }
-            		 
+
             		 this.rangedAttackEntityHost.attackEntityWithRangedAttack(this.attackTarget, indirect ? 1 : 0);
             		 if (this.entityHost.currentAnimation != EnumAnimation.AIMING)
             		 {

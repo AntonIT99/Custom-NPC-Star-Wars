@@ -271,7 +271,7 @@ public class DataInventory implements IInventory{
 	{
 		//TODO: Take melee Flan's weapons into account (animation -> to test + range + attackSpeed)
 		//TODO: Handle gun in offHand
-		//TODO: Reload Sound? Distort Sound? LastBulletSound?
+		//TODO: Do Not use npc.stats if useRangeStats / useMeleeStats is on
 		//TODO: Implement Non Flan projectiles / Ranged Weapons / Enchantments / Potions
 
 		if (mainWeapon != null)
@@ -283,6 +283,7 @@ public class DataInventory implements IInventory{
 				float reloadTime = gun.getReloadTime(mainWeapon);
 				float fireRate = gun.getShootDelay(mainWeapon);
 				float bulletSpeed;
+				String fireSound = EntityNPCInterface.getGunFireSound(mainWeapon, gun, false);
 
 				if (projectile != null)
 				{
@@ -300,7 +301,8 @@ public class DataInventory implements IInventory{
 				npc.stats.maxDelay = (int)Math.ceil(reloadTime);
 				npc.stats.fireRate = Math.round(fireRate);
 				npc.stats.shotCount = gun.getNumBullets(mainWeapon);
-				npc.stats.fireSound = getGunSound(mainWeapon, gun);
+				if (fireSound != null)
+					npc.stats.fireSound = "flansmod:" + fireSound;
 			}
 		}
 
@@ -313,24 +315,6 @@ public class DataInventory implements IInventory{
 				npc.stats.burstCount = shootable.roundsPerItem;
 			}
 		}
-	}
-
-	private String getGunSound(ItemStack stack, GunType gunType)
-	{
-		AttachmentType barrel = gunType.getBarrel(stack);
-		AttachmentType grip = gunType.getGrip(stack);
-
-		boolean silenced = barrel != null && barrel.silencer && !gunType.getSecondaryFire(stack);
-		String soundToPlay = null;
-
-		if (gunType.getSecondaryFire(stack) && grip != null && grip.secondaryShootSound != null)
-			soundToPlay = grip.secondaryShootSound;
-		else if (silenced && gunType.suppressedShootSound != null)
-			soundToPlay = gunType.suppressedShootSound;
-		else if (gunType.shootSound != null)
-			soundToPlay = gunType.shootSound;
-
-		return "flansmod:" + soundToPlay;
 	}
 
 	public ArrayList<ItemStack> getDroppedItems(DamageSource damagesource) {
