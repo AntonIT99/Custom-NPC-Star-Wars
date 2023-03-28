@@ -26,12 +26,13 @@ import com.flansmod.common.guns.*;
 import com.flansmod.common.teams.ItemTeamArmour;
 import noppes.npcs.constants.EnumPotionType;
 import noppes.npcs.entity.EntityNPCInterface;
+import noppes.npcs.util.NPCInterfaceUtil;
 
 public class DataInventory implements IInventory{
-	public HashMap<Integer,ItemStack> items = new HashMap<Integer,ItemStack>();
-	public HashMap<Integer,Double> dropchance = new HashMap<Integer,Double>();
-	public HashMap<Integer,ItemStack> weapons = new HashMap<Integer, ItemStack>();
-	public HashMap<Integer,ItemStack> armor = new HashMap<Integer, ItemStack>();
+	public HashMap<Integer,ItemStack> items = new HashMap<>();
+	public HashMap<Integer,Double> dropchance = new HashMap<>();
+	public HashMap<Integer,ItemStack> weapons = new HashMap<>();
+	public HashMap<Integer,ItemStack> armor = new HashMap<>();
 		
 	public int minExp = 0;
 	public int maxExp = 0;
@@ -87,7 +88,7 @@ public class DataInventory implements IInventory{
 	}
 	public void setWeapons(HashMap<Integer, ItemStack> list) {
 		weapons = list;
-		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setWeaponStats();
 		setKnockbackResistance(weapons, armor);
 	}
 	public HashMap<Integer, ItemStack> getArmor() {
@@ -103,7 +104,7 @@ public class DataInventory implements IInventory{
 	}
 	public void setWeapon(ItemStack item){
 		weapons.put(0, item);
-		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setWeaponStats();
 		setKnockbackResistance(weapons, armor);
 	}
 	public ItemStack getProjectile(){
@@ -111,7 +112,7 @@ public class DataInventory implements IInventory{
 	}
 	public void setProjectile(ItemStack item){
 		weapons.put(1, item);
-		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setWeaponStats();
 		setKnockbackResistance(weapons, armor);
 	}
 	public ItemStack getOffHand(){
@@ -119,7 +120,7 @@ public class DataInventory implements IInventory{
 	}
 	public void setOffHand(ItemStack item){
 		weapons.put(2, item);
-		setWeaponStats(weapons.get(0), weapons.get(1), weapons.get(2));
+		setWeaponStats();
 		setKnockbackResistance(weapons, armor);
 	}
 
@@ -197,16 +198,16 @@ public class DataInventory implements IInventory{
 		npc.stats.resistances.explosion = explosionResistance + blastProtectionLevel * 0.04F * (2F - meleeResistance);
 	}
 
-	private void setWeaponStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
+	private void setWeaponStats()
 	{
 		if (useWeaponMeleeStats)
 		{
-			setMeleeStats(mainWeapon, offHandWeapon);
+			setMeleeStats(weapons.get(0), weapons.get(2));
 		}
 
 		if (useWeaponRangedStats)
 		{
-			setRangedStats(mainWeapon, projectile, offHandWeapon);
+			setRangedStats(npc.getGuns(), weapons.get(1));
 		}
 	}
 
@@ -214,15 +215,24 @@ public class DataInventory implements IInventory{
 	{
 		float damageMainWeapon = 0F;
 		float damageOffHandWeapon = 0F;
-		int fireAspectLevel = 0;
+		int fireAspectLevel;
+		int meleeTime = 1;
 
 		if (mainWeapon != null)
 		{
 			damageMainWeapon = getMeleeDamage(mainWeapon);
+			if (mainWeapon.getItem() instanceof ItemGun)
+			{
+				meleeTime = ((ItemGun) mainWeapon.getItem()).type.meleeTime;
+			}
 		}
 		if (offHandWeapon != null)
 		{
 			damageOffHandWeapon = getMeleeDamage(offHandWeapon);
+			if (offHandWeapon.getItem() instanceof ItemGun)
+			{
+				meleeTime = Math.max(meleeTime, ((ItemGun) offHandWeapon.getItem()).type.meleeTime);
+			}
 		}
 
 		fireAspectLevel = Math.max(EnchantmentHelper.getEnchantmentLevel(Enchantment.fireAspect.effectId, mainWeapon), EnchantmentHelper.getEnchantmentLevel(Enchantment.knockback.effectId, offHandWeapon));
@@ -235,6 +245,9 @@ public class DataInventory implements IInventory{
 			npc.stats.potionType = EnumPotionType.Fire;
 			npc.stats.potionDuration = 4 * fireAspectLevel;
 		}
+
+		if (meleeTime > 1)
+			npc.stats.attackSpeed = meleeTime;
 	}
 
 	private float getMeleeDamage(ItemStack item)
@@ -267,43 +280,51 @@ public class DataInventory implements IInventory{
 		return OptionalDouble.empty();
 	}
 
-	private void setRangedStats(ItemStack mainWeapon, ItemStack projectile, ItemStack offHandWeapon)
+	private void setRangedStats(List<ItemStack> guns, ItemStack projectile)
 	{
-		//TODO: Take melee Flan's weapons into account (animation -> to test + range + attackSpeed)
-		//TODO: Handle gun in offHand
-		//TODO: Do Not use npc.stats if useRangeStats / useMeleeStats is on
-		//TODO: Implement Non Flan projectiles / Ranged Weapons / Enchantments / Potions
 
-		if (mainWeapon != null)
+		if (!guns.isEmpty())
 		{
-			Item mainWeapomItem = mainWeapon.getItem();
-			if (mainWeapomItem instanceof ItemGun)
+			int shotCount = 0;
+			float damage = 0F;
+			float bulletSpeed = Float.MAX_VALUE;
+			float bulletSpread = 0F;
+			float reloadTime = 0F;
+			float fireRate = 0F;
+			String fireSound = null;
+
+			for (ItemStack gunItemStack: guns)
 			{
-				GunType gun = ((ItemGun) mainWeapomItem).type;
-				float reloadTime = gun.getReloadTime(mainWeapon);
-				float fireRate = gun.getShootDelay(mainWeapon);
-				float bulletSpeed;
-				String fireSound = EntityNPCInterface.getGunFireSound(mainWeapon, gun, false);
+				GunType gun = ((ItemGun) gunItemStack.getItem()).type;
+				damage += gun.getDamage(gunItemStack);
+				shotCount += gun.getNumBullets(gunItemStack);
+				reloadTime = Math.max(reloadTime, gun.getReloadTime(gunItemStack));
+				fireRate = Math.max(fireRate, gun.getShootDelay(gunItemStack));
+				bulletSpread = Math.max(bulletSpread, gun.getSpread(gunItemStack, false, false));
+
+				if (fireSound == null)
+					fireSound = NPCInterfaceUtil.getGunFireSound(gunItemStack, gun, false);
 
 				if (projectile != null)
 				{
-					bulletSpeed = gun.getBulletSpeed(mainWeapon, projectile);
+					bulletSpeed = Math.min(bulletSpeed, gun.getBulletSpeed(gunItemStack, projectile));
 				}
 				else
 				{
-					bulletSpeed = gun.getBulletSpeed(mainWeapon);
+					bulletSpeed = Math.min(bulletSpeed, gun.getBulletSpeed(gunItemStack));
 				}
-
-				npc.stats.pDamage = gun.getDamage(mainWeapon);
-				npc.stats.pSpeed = Math.round(Math.max(bulletSpeed, 1F));
-				npc.stats.accuracy = EntityNPCInterface.bulletSpreadToAccuracy(gun.getSpread(mainWeapon, false, false));
-				npc.stats.minDelay = (int)Math.floor(reloadTime);
-				npc.stats.maxDelay = (int)Math.ceil(reloadTime);
-				npc.stats.fireRate = Math.round(fireRate);
-				npc.stats.shotCount = gun.getNumBullets(mainWeapon);
-				if (fireSound != null)
-					npc.stats.fireSound = "flansmod:" + fireSound;
 			}
+
+			npc.stats.pDamage = damage / guns.size();
+			npc.stats.pSpeed = Math.round(Math.max(bulletSpeed, 1F));
+			npc.stats.accuracy = NPCInterfaceUtil.bulletSpreadToAccuracy(bulletSpread);
+			npc.stats.minDelay = (int)Math.floor(reloadTime);
+			npc.stats.maxDelay = (int)Math.ceil(reloadTime);
+			npc.stats.fireRate = Math.round(fireRate);
+			npc.stats.shotCount = shotCount;
+
+			if (fireSound != null)
+				npc.stats.fireSound = "flansmod:" + fireSound;
 		}
 
 		if (projectile != null)

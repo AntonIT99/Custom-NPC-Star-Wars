@@ -2,9 +2,7 @@ package noppes.npcs.entity;
 
 import com.flansmod.client.FlansModClient;
 import com.flansmod.client.model.GunAnimations;
-import com.flansmod.common.FlansMod;
 import com.flansmod.common.guns.*;
-import com.flansmod.common.network.PacketPlaySound;
 import cpw.mods.fml.common.registry.IEntityAdditionalSpawnData;
 import io.netty.buffer.ByteBuf;
 import net.minecraftforge.common.MinecraftForge;
@@ -37,6 +35,7 @@ import noppes.npcs.roles.*;
 import noppes.npcs.scripted.entity.ScriptNpc;
 import noppes.npcs.scripted.event.NpcEvent;
 import noppes.npcs.util.GameProfileAlt;
+import noppes.npcs.util.NPCInterfaceUtil;
 
 import net.minecraft.block.Block;
 import net.minecraft.block.material.Material;
@@ -53,16 +52,17 @@ import net.minecraft.entity.passive.EntityBat;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.entity.projectile.EntityArrow;
+import net.minecraft.entity.projectile.EntityPotion;
 import net.minecraft.entity.projectile.EntityThrowable;
 import net.minecraft.init.Blocks;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemBow;
+import net.minecraft.item.ItemPotion;
 import net.minecraft.item.ItemStack;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.pathfinding.PathNavigate;
 import net.minecraft.potion.Potion;
 import net.minecraft.potion.PotionEffect;
-import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.*;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -234,7 +234,7 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 
 		boolean var4 = par1Entity.attackEntityFrom(new NpcDamageSource("mob", this), f);
-		sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_MELEE);
+		NPCInterfaceUtil.sendPacketWhenInRenderingRange(this, EnumPacketClient.ANIMATE_FLAN_MELEE);
 
 		if (var4){
 			if(getOwner() instanceof EntityPlayer)
@@ -583,135 +583,91 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 			NpcEvent.RangedLaunchedEvent event = new NpcEvent.RangedLaunchedEvent(wrappedNPC,stats.pDamage,entity);
 			if (EventHooks.onNPCRangedAttack(this, event))
 				return;
-			for (int i = 0; i < this.stats.shotCount; i++)
+
+			if (!getGuns().isEmpty())
 			{
-				Item projectileItem = proj.getItem();
-				if (projectileItem instanceof ItemShootable)
+				for(ItemStack gun: getGuns())
 				{
-					shootFlanProjectile((ItemBullet)projectileItem);
+					for (int i = 0; i < ((ItemGun)gun.getItem()).type.getNumBullets(gun); i++)
+					{
+						shootProjectile(entity, event, gun, proj, f);
+					}
 				}
-				else
+			}
+			else
+			{
+				for (int i = 0; i < stats.shotCount; i++)
 				{
-					EntityProjectile projectile = shoot(entity, stats.accuracy, proj, f == 1);
-					projectile.damage = event.getDamage();
+					shootProjectile(entity, event, null, proj, f);
 				}
 			}
 
 			if (inventory.useWeaponRangedStats && !getGuns().isEmpty())
 			{
 				for(ItemStack gun: getGuns())
-				{
-					playGunFireSound(gun);
-				}
+					NPCInterfaceUtil.playGunFireSound(gun, posX, posY, posZ, dimension, lastBurst);
 			}
 			else
 			{
 				playSound(stats.fireSound, 2.0F, 1.0f);
 			}
 
-			sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_SHOOT);
+			NPCInterfaceUtil.sendPacketWhenInRenderingRange(this, EnumPacketClient.ANIMATE_FLAN_SHOOT);
 		}
+	}
+
+	public void shootProjectile(EntityLivingBase entity, NpcEvent.RangedLaunchedEvent event, ItemStack gunItemStack, ItemStack projectileItemStack, float f)
+	{
+		Item projectileItem = projectileItemStack.getItem();
+		if (projectileItem instanceof ItemShootable)
+		{
+			shootFlanProjectile(gunItemStack, projectileItemStack);
+		}
+		else if (projectileItem instanceof ItemPotion)
+		{
+			shootThrowable(new EntityPotion(worldObj, this, projectileItemStack), entity, f == 1);
+		}
+		else
+		{
+			EntityProjectile projectile = shoot(entity, stats.accuracy, projectileItemStack, f == 1);
+			projectile.damage = event.getDamage();
+		}
+	}
+
+	public void shootThrowable(EntityThrowable throwable, EntityLivingBase entity, boolean indirect)
+	{
+		double varX = entity.posX - this.posX;
+		double varY = entity.boundingBox.minY + (double)(entity.height / 2.0F) - (this.posY + this.getEyeHeight());
+		double varZ = entity.posZ - this.posZ;
+		float varF = stats.pPhysics ? MathHelper.sqrt_double(varX * varX + varZ * varZ) : 0.0F;
+		float angle = NPCInterfaceUtil.getAngleForXYZ(stats.pSpeed, varY, varF, indirect);
+		float acc = 20.0F - MathHelper.floor_float(stats.accuracy / 5.0F);
+		NPCInterfaceUtil.setThrowableHeading(throwable, stats.pSpeed, stats.pPhysics, varX, varY, varZ, angle, acc);
+		worldObj.spawnEntityInWorld(throwable);
 	}
 
 	public void reloadGuns()
 	{
-		if (inventory.useWeaponRangedStats && !getGuns().isEmpty())
-		{
-			for(ItemStack gun: getGuns())
-			{
-				playGunReloadSound(gun);
-			}
-		}
-		sendPacketWhenInRenderingRange(EnumPacketClient.ANIMATE_FLAN_RELOAD);
-	}
-
-	public void playGunReloadSound(ItemStack gunStack)
-	{
-		ItemGun item = (ItemGun) gunStack.getItem();
-		GunType gunType = item.type;
-		String soundToPlay = null;
-		AttachmentType grip = gunType.getGrip(gunStack);
-
-		if (gunType.getSecondaryFire(gunStack) && grip != null && grip.secondaryReloadSound != null)
-			soundToPlay = grip.secondaryReloadSound;
-		else if (gunType.reloadSoundOnEmpty != null)
-			soundToPlay = gunType.reloadSoundOnEmpty;
-		else if (gunType.reloadSound != null)
-			soundToPlay = gunType.reloadSound;
-
-		if (soundToPlay != null)
-			PacketPlaySound.sendSoundPacket(posX, posY, posZ, gunType.reloadSoundRange, dimension, soundToPlay, true);
-	}
-
-	public void playGunFireSound(ItemStack gunStack)
-	{
-		ItemGun item = (ItemGun) gunStack.getItem();
-		GunType gunType = item.type;
-		if (item.soundDelay <= 0 && gunType.shootSound != null)
-		{
-			String soundToPlay = getGunFireSound(gunStack, gunType, lastBurst);
-
-			if (soundToPlay != null)
-			{
-				AttachmentType barrel = gunType.getBarrel(gunStack);
-				PacketPlaySound.sendSoundPacket(posX, posY, posZ, gunType.gunSoundRange, dimension, soundToPlay, gunType.distortSound, barrel != null && barrel.silencer && !gunType.getSecondaryFire(gunStack));
-			}
-
-			item.soundDelay = gunType.shootSoundLength;
-
-			if (gunType.distantShootSound != null)
-				FlansMod.packetHandler.sendToDonut(new PacketPlaySound(posX, posY, posZ, gunType.distantShootSound), posX, posY, posZ, gunType.gunSoundRange, gunType.distantSoundRange, dimension);
-		}
-	}
-
-	public static String getGunFireSound(ItemStack gunStack, GunType gunType, boolean lastBullet)
-	{
-		//TODO: fix lastBullet sound
-		AttachmentType barrel = gunType.getBarrel(gunStack);
-		AttachmentType grip = gunType.getGrip(gunStack);
-
-		boolean silenced = barrel != null && barrel.silencer && !gunType.getSecondaryFire(gunStack);
-		String soundToPlay = null;
-
-		if (gunType.getSecondaryFire(gunStack) && grip != null && grip.secondaryShootSound != null)
-			soundToPlay = grip.secondaryShootSound;
-		else if (lastBullet && gunType.lastShootSound != null)
-			soundToPlay = gunType.lastShootSound;
-		else if (silenced && gunType.suppressedShootSound != null)
-			soundToPlay = gunType.suppressedShootSound;
-		else if (gunType.shootSound != null)
-			soundToPlay = gunType.shootSound;
-
-		return soundToPlay;
+		for(ItemStack gun: getGuns())
+			NPCInterfaceUtil.playGunReloadSound(gun, posX, posY, posZ, dimension);
+		NPCInterfaceUtil.sendPacketWhenInRenderingRange(this, EnumPacketClient.ANIMATE_FLAN_RELOAD);
 	}
 
 	public List<ItemStack> getGuns()
 	{
 		ArrayList<ItemStack> guns = new ArrayList<>();
 		ItemStack mainHand = getHeldItem();
-		ItemStack offHand = getHeldItem();
+		ItemStack offHand = getOffHand();
 
-		if(mainHand != null && mainHand.getItem() instanceof ItemGun)
+		if(mainHand != null && mainHand.getItem() instanceof ItemGun && (NPCInterfaceUtil.isGunRangedWeapon((ItemGun) mainHand.getItem())))
 		{
 			guns.add(mainHand);
 		}
-		if(offHand != null && offHand.getItem() instanceof ItemGun)
+		if(offHand != null && offHand.getItem() instanceof ItemGun && (NPCInterfaceUtil.isGunRangedWeapon((ItemGun) offHand.getItem())))
 		{
 			guns.add(offHand);
 		}
-		return guns;
-	}
-
-	public void sendPacketWhenInRenderingRange(EnumPacketClient clientPacket)
-	{
-		List<EntityPlayer> list = MinecraftServer.getServer().getConfigurationManager().playerEntityList;
-		for (EntityPlayer player : list)
-		{
-			if (isInRangeToRender3d(player.posX, player.posY, player.posZ))
-			{
-				Server.sendData((EntityPlayerMP)player, clientPacket, getEntityId());
-			}
-		}
+ 		return guns;
 	}
 
 	public void animateFlanGunMelee()
@@ -797,44 +753,56 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		}
 	}
 
-	public void shootFlanProjectile(ItemShootable item)
+	public void shootFlanProjectile(ItemStack itemStackGun, ItemStack itemStackShootable)
 	{
+		ItemShootable itemShootable = (ItemShootable) itemStackShootable.getItem();
 		EntityShootable shot;
 
-		if (item instanceof ItemGrenade)
+		if (itemShootable instanceof ItemGrenade)
 		{
-			shot = ((ItemGrenade) item).getGrenade(worldObj, this);
+			shot = ((ItemGrenade) itemShootable).getGrenade(worldObj, this);
 		}
 		else
 		{
-			shot = item.getEntity(
+			float spread;
+			float damage;
+			int speed;
+			boolean shotgun;
+
+			if(itemStackGun != null && inventory.useWeaponRangedStats)
+			{
+				GunType gunType = ((ItemGun)itemStackGun.getItem()).type;
+				damage = ((ItemGun)itemStackGun.getItem()).type.getDamage(itemStackGun);
+				speed = Math.round(Math.max(((ItemGun)itemStackGun.getItem()).type.getBulletSpeed(itemStackGun, itemStackShootable), 1F));
+				spread = gunType.getSpread(itemStackGun, isSneaking(), isSprinting());
+				shotgun = (gunType.getNumBullets(itemStackGun) > 1);
+			}
+			else
+			{
+				damage = stats.pDamage;
+				speed = stats.pSpeed;
+				spread =  NPCInterfaceUtil.accuracyToBulletSpread(stats.accuracy);
+				shotgun = (stats.shotCount > 1);
+			}
+
+			shot = itemShootable.getEntity(
 					worldObj,
 					Vec3.createVectorHelper(posX, posY + getEyeHeight(), posZ),
 					rotationYawHead,
 					rotationPitch,
 					this,
-					accuracyToBulletSpread(stats.accuracy),
-					stats.pDamage,
-					stats.pSpeed,
+					spread,
+					damage,
+					speed,
 					0,
-					item.type
+					itemShootable.type
 			);
+
+			if (shot instanceof EntityBullet)
+				((EntityBullet) shot).shotgun = shotgun;
 		}
 
-		if (shot instanceof EntityBullet)
-			((EntityBullet) shot).shotgun = stats.shotCount > 1;
-
 		worldObj.spawnEntityInWorld(shot);
-	}
-
-	public static float accuracyToBulletSpread(int accuracy)
-	{
-		return Math.max((float) ((2D * 0.007499999832361937D / 0.005D) * (20D - (accuracy / 5D))), 0F);
-	}
-
-	public static int bulletSpreadToAccuracy(float spread)
-	{
-		return Math.max((int) Math.round(100D - (((5D * 0.005D)/(2D * 0.007499999832361937D)) * spread)), 0);
 	}
 
 	public EntityProjectile shoot(EntityLivingBase entity, int accuracy, ItemStack proj, boolean indirect){

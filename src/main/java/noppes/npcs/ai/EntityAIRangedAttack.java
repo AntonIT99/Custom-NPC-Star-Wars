@@ -10,6 +10,8 @@ import noppes.npcs.constants.EnumNavType;
 import noppes.npcs.constants.EnumPacketClient;
 import noppes.npcs.entity.EntityNPCInterface;
 
+import java.sql.SQLOutput;
+
 public class EntityAIRangedAttack extends EntityAIBase
 {
     /** The entity the AI instance has been applied to */
@@ -129,10 +131,9 @@ public class EntityAIRangedAttack extends EntityAIBase
         {
             if (var1 <= (double)range && (this.entityHost.getEntitySenses().canSee(this.attackTarget) || this.entityHost.ai.canFireIndirect == 2))
             {
-                burstCount++;
-                entityHost.lastBurst = (burstCount == entityHost.stats.burstCount);
-                if (burstCount <= entityHost.stats.burstCount)
+                 if (burstCount++ <= entityHost.stats.burstCount)
                  {
+                     entityHost.lastBurst = (burstCount > entityHost.stats.burstCount);
                      this.rangedAttackTime = this.entityHost.stats.fireRate;
                  }
                  else
