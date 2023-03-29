@@ -45,20 +45,17 @@ import net.minecraft.entity.*;
 import net.minecraft.entity.ai.*;
 import net.minecraft.entity.ai.EntityAITasks.EntityAITaskEntry;
 import net.minecraft.entity.boss.IBossDisplayData;
+import net.minecraft.entity.item.EntityExpBottle;
+import net.minecraft.entity.item.EntityFireworkRocket;
 import net.minecraft.entity.item.EntityItem;
 import net.minecraft.entity.monster.EntityMob;
 import net.minecraft.entity.monster.EntityZombie;
 import net.minecraft.entity.passive.EntityBat;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.entity.player.EntityPlayerMP;
-import net.minecraft.entity.projectile.EntityArrow;
-import net.minecraft.entity.projectile.EntityPotion;
-import net.minecraft.entity.projectile.EntityThrowable;
+import net.minecraft.entity.projectile.*;
 import net.minecraft.init.Blocks;
-import net.minecraft.item.Item;
-import net.minecraft.item.ItemBow;
-import net.minecraft.item.ItemPotion;
-import net.minecraft.item.ItemStack;
+import net.minecraft.item.*;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.pathfinding.PathNavigate;
 import net.minecraft.potion.Potion;
@@ -626,6 +623,19 @@ public abstract class EntityNPCInterface extends EntityCreature implements IEnti
 		else if (projectileItem instanceof ItemPotion)
 		{
 			shootThrowable(new EntityPotion(worldObj, this, projectileItemStack), entity, f == 1);
+		}
+		else if (projectileItem instanceof ItemExpBottle)
+		{
+			shootThrowable(new EntityExpBottle(worldObj, this), entity, f == 1);
+		}
+		else if (projectileItem instanceof ItemEgg)
+		{
+			shootThrowable(new EntityEgg(worldObj, this), entity, f == 1);
+		}
+		else if (projectileItem instanceof ItemFirework)
+		{
+			EntityFireworkRocket entityfireworkrocket = new EntityFireworkRocket(worldObj, posX, posY, posZ, projectileItemStack);
+			worldObj.spawnEntityInWorld(entityfireworkrocket);
 		}
 		else
 		{

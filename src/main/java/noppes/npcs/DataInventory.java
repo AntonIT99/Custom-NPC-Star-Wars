@@ -23,9 +23,16 @@ import net.minecraft.util.DamageSource;
 import net.minecraft.util.MathHelper;
 
 import com.flansmod.common.guns.*;
+import com.flansmod.common.guns.ItemGun;
 import com.flansmod.common.teams.ItemTeamArmour;
+import noppes.npcs.constants.EnumNpcToolMaterial;
+import noppes.npcs.constants.EnumParticleType;
 import noppes.npcs.constants.EnumPotionType;
+import noppes.npcs.enchants.EnchantInterface;
+import noppes.npcs.entity.EntityMagicProjectile;
 import noppes.npcs.entity.EntityNPCInterface;
+import noppes.npcs.entity.EntityProjectile;
+import noppes.npcs.items.*;
 import noppes.npcs.util.NPCInterfaceUtil;
 
 public class DataInventory implements IInventory{
@@ -207,7 +214,7 @@ public class DataInventory implements IInventory{
 
 		if (useWeaponRangedStats)
 		{
-			setRangedStats(npc.getGuns(), weapons.get(1));
+			setRangedStats(npc.getGuns(), weapons.get(0), weapons.get(1));
 		}
 	}
 
@@ -280,7 +287,7 @@ public class DataInventory implements IInventory{
 		return OptionalDouble.empty();
 	}
 
-	private void setRangedStats(List<ItemStack> guns, ItemStack projectile)
+	private void setRangedStats(List<ItemStack> guns, ItemStack mainWeapon, ItemStack projectile)
 	{
 
 		if (!guns.isEmpty())
@@ -334,6 +341,101 @@ public class DataInventory implements IInventory{
 			{
 				ShootableType shootable = ((ItemShootable) projectileItem).type;
 				npc.stats.burstCount = shootable.roundsPerItem;
+			}
+			else if (projectileItem instanceof noppes.npcs.items.ItemBullet && mainWeapon != null)
+			{
+				noppes.npcs.items.ItemBullet bullet = (noppes.npcs.items.ItemBullet) projectileItem;
+				if (mainWeapon.getItem()  instanceof noppes.npcs.items.ItemGun)
+				{
+					noppes.npcs.items.ItemGun gunItem = (noppes.npcs.items.ItemGun) mainWeapon.getItem();
+					EnumNpcToolMaterial gunMaterial = null;
+					for (EnumNpcToolMaterial material: EnumNpcToolMaterial.values())
+					{
+						if (material.getMaxUses() == gunItem.getMaxDamage())
+							gunMaterial = material;
+					}
+
+					if (gunMaterial != null)
+					{
+						int damage = (bullet.getBulletDamage() + gunMaterial.getDamageVsEntity() + 1) / 2 + 5;
+						damage += damage * EnchantInterface.getLevel(EnchantInterface.Damage, mainWeapon) * 0.5f;
+						npc.stats.pDamage = damage;
+					}
+					npc.stats.pSpeed = 40;
+					npc.stats.pPhysics = false;
+					npc.stats.fireSound = "customnpcs:gun.pistol.shot";
+				}
+			}
+			else if (projectileItem instanceof ItemThrowingWeapon)
+			{
+				npc.stats.pDamage = 2;
+				npc.stats.pSpeed = 12;
+				npc.stats.pPhysics = true;
+				npc.stats.pRender3D = true;
+				npc.stats.pStick = true;
+				npc.stats.pSpin = true;
+				npc.stats.fireSound = "customnpcs:misc.swosh";
+			}
+			else if (projectileItem instanceof ItemKunai)
+			{
+				npc.stats.pDamage = ((ItemKunai)projectileItem).func_150931_i();
+				npc.stats.pSpeed = 12;
+				npc.stats.pPhysics = true;
+				npc.stats.pRender3D = true;
+				npc.stats.pStick = true;
+			}
+		}
+
+		if (mainWeapon != null)
+		{
+			if (mainWeapon.getItem()  instanceof noppes.npcs.items.ItemMachineGun)
+			{
+				npc.stats.pDamage = 4;
+				npc.stats.pSpeed = 40;
+				npc.stats.pPhysics = false;
+				npc.stats.fireSound = "customnpcs:gun.pistol.shot";
+			}
+			else if (mainWeapon.getItem()  instanceof ItemCrossbow)
+			{
+				npc.stats.pDamage = 10;
+				npc.stats.pSpeed = 20;
+				npc.stats.pPhysics = true;
+				npc.stats.fireSound = "random.bow";
+			}
+			else if (mainWeapon.getItem()  instanceof ItemSlingshot)
+			{
+				npc.stats.pDamage = 4;
+				npc.stats.pImpact = 1;
+				npc.stats.pSpeed = 14;
+				npc.stats.pPhysics = true;
+				npc.stats.pSpin = true;
+				npc.stats.fireSound = "random.bow";
+			}
+			else if (mainWeapon.getItem()  instanceof ItemMusket)
+			{
+				npc.stats.pDamage = 16;
+				npc.stats.pSpeed = 50;
+				npc.stats.pPhysics = false;
+				npc.stats.pTrail = EnumParticleType.Smoke;
+			}
+			else if (mainWeapon.getItem()  instanceof ItemStaff)
+			{
+				ItemStaff staffItem = (ItemStaff) mainWeapon.getItem();
+				EnumNpcToolMaterial staffMaterial = null;
+				for (EnumNpcToolMaterial material: EnumNpcToolMaterial.values())
+				{
+					if (material.getEnchantability() == staffItem.getItemEnchantability())
+						staffMaterial = material;
+				}
+				npc.stats.pExplode = true;
+				if (staffMaterial != null)
+				{
+					int damage = 6 + staffMaterial.getDamageVsEntity() + npc.worldObj.rand.nextInt(4);
+					damage += damage * EnchantInterface.getLevel(EnchantInterface.Damage, mainWeapon) * 0.5f;
+					npc.stats.pDamage = damage;
+				}
+				npc.stats.pSpeed = 25;
+				npc.stats.fireSound = "customnpcs:magic.shot";
 			}
 		}
 	}
