@@ -1,20 +1,20 @@
 package com.swnpcmod.entity;
 
-import noppes.npcs.ModelData;
 import noppes.npcs.entity.EntityCustomNpc;
 import noppes.npcs.entity.EntityNPCInterface;
 
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.world.World;
 
-public class EntityStarWarsNPC extends EntityNPCInterface
+public abstract class EntityStarWarsNPC extends EntityNPCInterface
 {
-    public EntityStarWarsNPC(World w, float width, float height)
+    protected EntityStarWarsNPC(World world, float width, float height)
     {
-        super(w);
+        super(world);
         this.setSize(width, height);
     }
 
+    @Override
     public void onUpdate()
     {
         isDead = true;
