@@ -1,21 +1,35 @@
 package com.swnpcmod.model;
 
+import org.lwjgl.opengl.GL11;
+
 import noppes.npcs.client.model.ModelNPCMale;
 import noppes.npcs.constants.EnumAnimation;
 import noppes.npcs.constants.EnumJobType;
 import noppes.npcs.entity.EntityNPCInterface;
 import noppes.npcs.roles.JobPuppet;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MathHelper;
 
 public abstract class ModelStarWarsNPC extends ModelNPCMale
 {
-    protected ModelStarWarsNPC(float scaleFactor, boolean alex)
+    public ModelRenderer jacket;
+    public ModelRenderer chest;
+    public ModelRenderer leftSleeve;
+    public ModelRenderer rightSleeve;
+    public ModelRenderer leftPants;
+    public ModelRenderer rightPants;
+    private static boolean optifineBreak = false;
+    private static float lightmapLastX;
+    private static float lightmapLastY;
+
+    protected ModelStarWarsNPC(float scaleFactor)
     {
-        super(scaleFactor, alex);
+        super(scaleFactor, false);
     }
 
     protected void setRotateAngle(ModelRenderer modelRenderer, float x, float y, float z)
@@ -345,6 +359,65 @@ public abstract class ModelStarWarsNPC extends ModelNPCMale
                 bipedLeftLeg.rotateAngleY = job.lleg.rotationY * pi;
                 bipedLeftLeg.rotateAngleZ = job.lleg.rotationZ * pi;
             }
+        }
+    }
+
+    public static void glowOn()
+    {
+        GL11.glPushAttrib(GL11.GL_LIGHTING_BIT);
+
+        try
+        {
+            lightmapLastX = OpenGlHelper.lastBrightnessX;
+            lightmapLastY = OpenGlHelper.lastBrightnessY;
+        }
+        catch (NoSuchFieldError e)
+        {
+            optifineBreak = true;
+        }
+
+        float glowRatioX = Math.min(240F + lightmapLastX, 240);
+        float glowRatioY = Math.min(240F + lightmapLastY, 240);
+
+        if (!optifineBreak)
+        {
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, glowRatioX, glowRatioY);
+        }
+    }
+
+    public static void glowOff()
+    {
+        if (!optifineBreak)
+        {
+            OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit, lightmapLastX, lightmapLastY);
+        }
+        GL11.glPopAttrib();
+    }
+
+    public static void renderGlowingPart(ModelRenderer renderer, float f)
+    {
+        int srcBlend = -1;
+        int dstBlend = -1;
+
+        if (Minecraft.getMinecraft().gameSettings.fancyGraphics)
+        {
+            GL11.glPushMatrix();
+            glowOn();
+            GL11.glAlphaFunc(GL11.GL_GREATER, 0.001F);
+            GL11.glEnable(GL11.GL_BLEND);
+            srcBlend = GL11.glGetInteger(GL11.GL_BLEND_SRC);
+            dstBlend = GL11.glGetInteger(GL11.GL_BLEND_DST);
+            GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        }
+
+        renderer.render(f);
+
+        if (Minecraft.getMinecraft().gameSettings.fancyGraphics)
+        {
+            glowOff();
+            GL11.glBlendFunc(srcBlend, dstBlend);
+            GL11.glDisable(GL11.GL_BLEND);
+            GL11.glPopMatrix();
         }
     }
 }

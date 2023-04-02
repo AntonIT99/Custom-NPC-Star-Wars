@@ -19,7 +19,9 @@ import net.minecraft.util.ResourceLocation;
 public class RenderStarWarsNPC extends RenderNPCHumanMale
 {
     private final String texturePath;
-    private float modelScale = 1F;
+    private float modelScaleX = 1F;
+    private float modelScaleY = 1F;
+    private float modelScaleZ = 1F;
 
     public RenderStarWarsNPC(ModelStarWarsNPC model, String texturePath)
     {
@@ -30,14 +32,23 @@ public class RenderStarWarsNPC extends RenderNPCHumanMale
     public RenderStarWarsNPC(ModelStarWarsNPC model, float scale, String texturePath)
     {
         this(model, texturePath);
-        modelScale = scale;
+        modelScaleX = modelScaleY = modelScaleZ = scale;
     }
 
+    public RenderStarWarsNPC(ModelStarWarsNPC model, float scaleX, float scaleY, float scaleZ, String texturePath)
+    {
+        this(model, texturePath);
+        modelScaleX = scaleX;
+        modelScaleY = scaleY;
+        modelScaleZ = scaleZ;
+    }
+
+    @Override
     protected void preRenderCallback(EntityLivingBase entity, float f)
     {
-        if (modelScale != 1F)
+        if (modelScaleX != 1F || modelScaleY != 1F || modelScaleZ != 1F )
         {
-            GL11.glScalef(modelScale, modelScale, modelScale);
+            GL11.glScalef(modelScaleX, modelScaleY, modelScaleZ);
         }
     }
 

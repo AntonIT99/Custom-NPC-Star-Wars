@@ -19,9 +19,9 @@ public class CustomArmorItem extends ItemArmor
 {
     protected String name;
 
-    public CustomArmorItem(ArmorMaterial material, String name, String iconName, int renderIndex, int type)
+    public CustomArmorItem(ArmorMaterial material, String name, String iconName, int type)
     {
-        super(material, renderIndex, type);
+        super(material, 0, type);
         this.name = name;
         setUnlocalizedName(Strings.MOD_ID + "." + name);
         setTextureName(Strings.MOD_ID + ":" + iconName);

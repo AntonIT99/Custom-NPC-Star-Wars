@@ -9,6 +9,6 @@ public class EntityTwilekMale extends EntityStarWarsNPC
 {
     public EntityTwilekMale(World w)
     {
-        super(w, 0.6F, 1.8F);
+        super(w, 0.6F, 1.9F);
     }
 }
